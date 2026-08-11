@@ -9,8 +9,11 @@ export type {
   SourceCapabilities,
   SourceIcon,
   SourceInput,
-  NowPlayingInfo,
+  SourcePage,
+  PlaybackInfo,
 } from "./media-source.js";
+
+export type { PlaybackHistoryItem } from "./playback-history.js";
 
 export type {
   WsClientMessage,

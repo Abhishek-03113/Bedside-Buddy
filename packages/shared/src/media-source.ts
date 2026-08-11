@@ -6,8 +6,6 @@ import type { CommandResult, RemoteCommand } from "./commands.js";
 export interface SourceCapabilities {
   supportsSeek: boolean;
   supportsNextEpisode: boolean;
-  /** "Continue watching" / now-playing — optional and flaky; see architecture §4 */
-  supportsNowPlayingMetadata: boolean;
   supportsVolume: boolean;
 }
 
@@ -17,12 +15,11 @@ export interface SourceIcon {
   alt?: string;
 }
 
-export interface NowPlayingInfo {
-  title: string;
-  subtitle?: string;
+export interface PlaybackInfo {
+  sourceId: string;
+  contentUrl: string;
+  title?: string;
   artworkUrl?: string;
-  progressSeconds?: number;
-  durationSeconds?: number;
 }
 
 /**
@@ -33,6 +30,13 @@ export interface SourceInput {
   sendKey(keyCode: string): Promise<CommandResult>;
   /** Pause all media in the current source view without toggling playback. */
   pauseMedia(): Promise<CommandResult>;
+}
+
+/** Authenticated source page bridge; selectors and navigation stay in each source. */
+export interface SourcePage {
+  getUrl(): string;
+  getTitle(): string;
+  navigate(url: string): Promise<void>;
 }
 
 /**
@@ -55,6 +59,12 @@ export interface MediaSource {
   /** Called when a view becomes available / is rebound after show */
   bindInput?(input: SourceInput): void;
 
-  /** Only present when capabilities.supportsNowPlayingMetadata is true */
-  getNowPlaying?(): Promise<NowPlayingInfo | null>;
+  /** Called when this source's authenticated WebContentsView is available. */
+  bindPage?(page: SourcePage): void;
+
+  /** Return the current normal content page when this source recognizes it as playable. */
+  getCurrentPlaybackInfo?(): PlaybackInfo | null;
+
+  /** Reopen a validated playback-history URL in this source's retained session. */
+  resumePlayback?(contentUrl: string): Promise<void>;
 }
