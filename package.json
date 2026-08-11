@@ -1,0 +1,20 @@
+{
+  "name": "coosy",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Big Picture-style launcher for web media, controlled from your phone",
+  "packageManager": "pnpm@9.15.0",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "pnpm -r run build",
+    "dev": "pnpm --filter @coosy/desktop dev",
+    "dev:remote": "pnpm --filter @coosy/remote dev",
+    "typecheck": "pnpm -r run typecheck",
+    "clean": "pnpm -r run clean"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.2"
+  }
+}
