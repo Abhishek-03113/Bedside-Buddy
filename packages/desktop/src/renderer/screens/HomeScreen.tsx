@@ -157,6 +157,9 @@ export function HomeScreen({
   // Register key + remote listeners once; refs keep handlers current.
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
+      if ((event.target as HTMLElement | null)?.closest(".continue-card")) {
+        return;
+      }
       const action = KEY_TO_NAV[event.key];
       if (!action) return;
       // Prevent Space from scrolling the launcher when activating a tile.
@@ -202,11 +205,15 @@ export function HomeScreen({
   return (
     <main className="home">
       <header className="home__header">
-        <h1 className="home__brand">CoOSy</h1>
-        <p className="home__tagline">Pick a source. Control from your phone.</p>
+        <h1 className="home__brand">Co<span>OSy</span></h1>
+        <div className="home__status" aria-label="Remote is ready to connect">
+          <span className="home__status-dot" />
+          {connection ? "Phone ready" : "Connecting phone"}
+        </div>
+        <span className="home__settings" aria-hidden="true">⚙</span>
       </header>
 
-      <ContinueCard items={[]} />
+      <ContinueCard items={[]} onSelect={handleSelect} />
 
       {loadError ? <p className="home__error">{loadError}</p> : null}
 
@@ -215,6 +222,10 @@ export function HomeScreen({
         className="home__sources"
         aria-label="Sources"
       >
+        <div className="home__sources-heading">
+          <h2>Sources</h2>
+          <span>Browse all</span>
+        </div>
         {sources.map((source, index) => (
           <SourceTile
             key={source.id}
