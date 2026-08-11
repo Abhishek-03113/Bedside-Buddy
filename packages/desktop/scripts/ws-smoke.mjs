@@ -1,11 +1,11 @@
 #!/usr/bin/env node
 /**
- * Minimal WS smoke client (packages/remote is out of scope).
+ * Minimal WS smoke client against the laptop remote server.
  *
  * Usage:
  *   node packages/desktop/scripts/ws-smoke.mjs [wsUrl] [pairingCode]
  *
- * Example:
+ * Example (same port serves HTTP UI + WS):
  *   node packages/desktop/scripts/ws-smoke.mjs ws://127.0.0.1:17832 123456
  */
 import WebSocket from "ws";

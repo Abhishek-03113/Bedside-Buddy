@@ -2,7 +2,13 @@ import { app, BrowserWindow } from "electron";
 import { join } from "node:path";
 import { initDb } from "./db/db.js";
 import { SourceHost } from "./source-host.js";
-import { startWsServer, type WsServer } from "./ws-server.js";
+import {
+  buildContextMessage,
+  resolveRemotePort,
+  resolveRemoteStaticRoot,
+  startRemoteServer,
+  type RemoteServer,
+} from "./remote-server.js";
 import { startDiscovery } from "./discovery.js";
 import { ensureWidevineReady } from "./widevine.js";
 import {
@@ -13,14 +19,14 @@ import {
 } from "./ipc.js";
 import { getOrCreatePairingCode } from "./pairing.js";
 import { ToastOverlay } from "./toast-overlay.js";
-import type { SourceCapabilities } from "@coosy/shared";
-import { SOURCES } from "./sources/registry.js";
+import { getLanIPv4 } from "./lan.js";
 
 let mainWindow: BrowserWindow | null = null;
 let sourceHost: SourceHost | null = null;
-let wsServer: WsServer | null = null;
+let remoteServer: RemoteServer | null = null;
 let stopDiscovery: (() => void) | null = null;
 let toastOverlay: ToastOverlay | null = null;
+let remoteStartError: string | null = null;
 
 async function createWindow(): Promise<void> {
   mainWindow = new BrowserWindow({
@@ -45,15 +51,7 @@ async function createWindow(): Promise<void> {
 
   sourceHost = new SourceHost(mainWindow, {
     onContextChange: ({ mode, activeSourceId }) => {
-      const capabilities: SourceCapabilities | null = activeSourceId
-        ? (SOURCES[activeSourceId]?.capabilities ?? null)
-        : null;
-      wsServer?.broadcast({
-        kind: "context",
-        mode,
-        activeSourceId,
-        capabilities,
-      });
+      remoteServer?.broadcast(buildContextMessage(sourceHost));
       sendContextToRenderer(mainWindow, { mode, activeSourceId });
       if (mode === "launcher") {
         toastOverlay?.hide();
@@ -79,6 +77,49 @@ async function createWindow(): Promise<void> {
   });
 }
 
+async function startAuxiliaryRemote(): Promise<void> {
+  const staticRoot = resolveRemoteStaticRoot({
+    desktopOutDir: join(__dirname, ".."),
+  });
+
+  try {
+    remoteServer = await startRemoteServer({
+      getSourceHost: () => sourceHost,
+      staticRoot,
+      onToast: (payload) =>
+        presentToast({
+          window: mainWindow,
+          host: sourceHost,
+          overlay: toastOverlay,
+          payload,
+        }),
+      onNav: (action) => sendNavToRenderer(mainWindow, action),
+    });
+    remoteStartError = null;
+
+    try {
+      stopDiscovery = await startDiscovery(remoteServer.port);
+    } catch (err) {
+      console.warn("[discovery] failed to advertise (remote still up)", err);
+    }
+
+    const ip = getLanIPv4() ?? "<lan-ip>";
+    console.log(
+      `[pairing] code ${getOrCreatePairingCode()} — open http://${ip}:${remoteServer.port}`,
+    );
+    if (!staticRoot) {
+      console.warn(
+        "[remote] UI assets missing — run `pnpm --filter @coosy/remote build` (or desktop package script)",
+      );
+    }
+  } catch (err) {
+    remoteServer = null;
+    remoteStartError =
+      err instanceof Error ? err.message : "Remote server failed to start";
+    console.error("[remote] startup failed — desktop continues without remote", err);
+  }
+}
+
 app.whenReady().then(async () => {
   initDb();
   getOrCreatePairingCode();
@@ -89,26 +130,11 @@ app.whenReady().then(async () => {
   registerIpcHandlers({
     getWindow: () => mainWindow,
     getSourceHost: () => sourceHost,
-    getWsPort: () => wsServer?.port ?? Number(process.env.COOSY_WS_PORT ?? 17832),
+    getWsPort: () => remoteServer?.port ?? resolveRemotePort(),
+    getRemoteError: () => remoteStartError,
   });
 
-  wsServer = await startWsServer({
-    getSourceHost: () => sourceHost,
-    onToast: (payload) =>
-      presentToast({
-        window: mainWindow,
-        host: sourceHost,
-        overlay: toastOverlay,
-        payload,
-      }),
-    onNav: (action) => sendNavToRenderer(mainWindow, action),
-  });
-
-  stopDiscovery = await startDiscovery(wsServer.port);
-
-  console.log(
-    `[pairing] code ${getOrCreatePairingCode()} — connect ws://<lan-ip>:${wsServer.port}`,
-  );
+  await startAuxiliaryRemote();
 
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) {
@@ -119,8 +145,19 @@ app.whenReady().then(async () => {
 
 app.on("window-all-closed", () => {
   stopDiscovery?.();
-  void wsServer?.close();
+  stopDiscovery = null;
+  void remoteServer?.close().catch((err) => {
+    console.warn("[remote] close error", err);
+  });
+  remoteServer = null;
   if (process.platform !== "darwin") {
     app.quit();
   }
+});
+
+app.on("before-quit", () => {
+  stopDiscovery?.();
+  stopDiscovery = null;
+  void remoteServer?.close().catch(() => undefined);
+  remoteServer = null;
 });
