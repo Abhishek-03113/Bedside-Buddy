@@ -8,7 +8,7 @@ describe("playback history to ContinueCard mapping", () => {
         { id: 1, sourceId: "netflix", contentUrl: "https://www.netflix.com/watch/1", title: "Dark", lastPlayedAt: 1 },
         { id: 2, sourceId: "missing", contentUrl: "https://example.com", lastPlayedAt: 2 },
       ],
-      [{ id: "netflix", displayName: "Netflix", icon: { src: "/assets/sources/netflix.svg" }, capabilities: { supportsSeek: true, supportsNextEpisode: true, supportsVolume: true } }],
+      [{ id: "netflix", displayName: "Netflix", icon: { src: "/assets/sources/netflix.svg" }, capabilities: { supportsSeek: true, supportsNextEpisode: true, supportsVolume: true, supportsScroll: true, supportsSearch: true, supportsBrowseNavigate: true } }],
     )).toEqual([
       { id: 1, sourceId: "netflix", contentUrl: "https://www.netflix.com/watch/1", title: "Dark", lastPlayedAt: 1, sourceName: "Netflix", sourceIcon: "/assets/sources/netflix.svg" },
     ]);

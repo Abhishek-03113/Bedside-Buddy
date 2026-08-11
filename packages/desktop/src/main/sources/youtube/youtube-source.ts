@@ -8,13 +8,19 @@ import type {
   SourcePage,
   PlaybackInfo,
 } from "@coosy/shared";
-import { translateYoutubeCommand } from "./youtube-commands.js";
+import {
+  translateYoutubeCommand,
+  youtubeSearchUrl,
+} from "./youtube-commands.js";
 
 const CAPABILITIES: SourceCapabilities = {
   supportsSeek: true,
   // Next video needs Shift+N; SourceInput cannot send modifiers today.
   supportsNextEpisode: false,
   supportsVolume: true,
+  supportsScroll: true,
+  supportsSearch: true,
+  supportsBrowseNavigate: true,
 };
 
 const ICON: SourceIcon = {
@@ -77,6 +83,14 @@ export class YoutubeSource implements MediaSource {
   }
 
   async handleCommand(command: RemoteCommand): Promise<CommandResult> {
+    if (command.type === "search") {
+      const url = youtubeSearchUrl(command.query);
+      if (!url) return { ok: false, reason: "unsupported" };
+      if (!this.page) return { ok: false, reason: "no-active-session" };
+      await this.page.navigate(url);
+      return { ok: true };
+    }
+
     if (!this.input) {
       return { ok: false, reason: "no-active-session" };
     }

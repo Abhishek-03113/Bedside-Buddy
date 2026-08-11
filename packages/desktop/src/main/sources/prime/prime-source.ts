@@ -8,12 +8,18 @@ import type {
   SourcePage,
   PlaybackInfo,
 } from "@coosy/shared";
-import { translatePrimeCommand } from "./prime-commands.js";
+import {
+  primeSearchUrl,
+  translatePrimeCommand,
+} from "./prime-commands.js";
 
 const CAPABILITIES: SourceCapabilities = {
   supportsSeek: true,
   supportsNextEpisode: false,
   supportsVolume: true,
+  supportsScroll: true,
+  supportsSearch: true,
+  supportsBrowseNavigate: true,
 };
 
 const ICON: SourceIcon = {
@@ -70,6 +76,14 @@ export class PrimeSource implements MediaSource {
   }
 
   async handleCommand(command: RemoteCommand): Promise<CommandResult> {
+    if (command.type === "search") {
+      const url = primeSearchUrl(command.query);
+      if (!url) return { ok: false, reason: "unsupported" };
+      if (!this.page) return { ok: false, reason: "no-active-session" };
+      await this.page.navigate(url);
+      return { ok: true };
+    }
+
     if (!this.input) {
       return { ok: false, reason: "no-active-session" };
     }

@@ -27,7 +27,33 @@ export function translateHotstarCommand(
       return command.direction === "up" ? ["ArrowUp"] : ["ArrowDown"];
     case "next-episode":
       return null;
+    case "scroll":
+      return command.direction === "up" ? ["PageUp"] : ["PageDown"];
+    case "navigate":
+      switch (command.direction) {
+        case "up":
+          return ["ArrowUp"];
+        case "down":
+          return ["ArrowDown"];
+        case "left":
+          return ["ArrowLeft"];
+        case "right":
+          return ["ArrowRight"];
+      }
+      return null;
+    case "activate":
+      return ["Enter"];
+    case "search":
+      return null;
     default:
       return null;
   }
+}
+
+/**
+ * Hotstar web search URL is region/app dependent and not reliable enough
+ * for a generic navigate — return null so handleCommand reports unsupported.
+ */
+export function hotstarSearchUrl(_query: string): string | null {
+  return null;
 }

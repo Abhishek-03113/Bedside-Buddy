@@ -87,4 +87,63 @@ describe("createWsClient reconnect", () => {
 
     vi.useRealTimers();
   });
+
+  it("delivers context and toast updates without inventing local state", async () => {
+    FakeWebSocket.instances = [];
+    const client = createWsClient({
+      url: "ws://example.test",
+      clientId: "fixed-id",
+      WebSocketImpl: FakeWebSocket as unknown as typeof WebSocket,
+    });
+
+    await Promise.resolve();
+    await Promise.resolve();
+
+    const contexts: Array<{ mode: string; activeSourceId: string | null }> = [];
+    const toasts: Array<{ message: string; ok: boolean }> = [];
+    client.onContext((ctx) =>
+      contexts.push({ mode: ctx.mode, activeSourceId: ctx.activeSourceId }),
+    );
+    client.onToast((t) => toasts.push(t));
+
+    FakeWebSocket.instances[0]!.emit(
+      "message",
+      JSON.stringify({
+        kind: "hello-ack",
+        sessionId: "s1",
+        activeSourceId: null,
+        capabilities: null,
+        mode: "launcher",
+        sources: [{ id: "netflix", displayName: "Netflix" }],
+      }),
+    );
+
+    FakeWebSocket.instances[0]!.emit(
+      "message",
+      JSON.stringify({
+        kind: "context",
+        mode: "player",
+        activeSourceId: "netflix",
+        capabilities: {
+          supportsSeek: true,
+          supportsNextEpisode: true,
+          supportsVolume: true,
+          supportsScroll: true,
+          supportsSearch: true,
+          supportsBrowseNavigate: true,
+        },
+        sources: [{ id: "netflix", displayName: "Netflix" }],
+      }),
+    );
+    FakeWebSocket.instances[0]!.emit(
+      "message",
+      JSON.stringify({ kind: "toast", message: "activate", ok: true }),
+    );
+
+    expect(contexts).toEqual([{ mode: "player", activeSourceId: "netflix" }]);
+    expect(toasts).toEqual([
+      { kind: "toast", message: "activate", ok: true },
+    ]);
+    client.close();
+  });
 });

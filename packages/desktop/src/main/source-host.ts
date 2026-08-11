@@ -450,6 +450,13 @@ function mapToElectronKeyCode(keyCode: string): string {
     case "l":
     case "L":
       return "L";
+    case "Enter":
+    case "Return":
+      return "Return";
+    case "PageUp":
+      return "PageUp";
+    case "PageDown":
+      return "PageDown";
     default:
       return keyCode.length === 1 ? keyCode.toUpperCase() : keyCode;
   }

@@ -20,4 +20,21 @@ describe("translateHotstarCommand", () => {
   it("does not invent a next-episode binding", () => {
     expect(translateHotstarCommand({ type: "next-episode" })).toBeNull();
   });
+
+  it("maps browse navigate / scroll and leaves search to URL helper", () => {
+    expect(
+      translateHotstarCommand({ type: "navigate", direction: "down" }),
+    ).toEqual(["ArrowDown"]);
+    expect(translateHotstarCommand({ type: "activate" })).toEqual(["Enter"]);
+    expect(
+      translateHotstarCommand({ type: "scroll", direction: "up" }),
+    ).toEqual(["PageUp"]);
+  });
+});
+
+describe("hotstarSearchUrl", () => {
+  it("honestly reports unsupported generic search", async () => {
+    const { hotstarSearchUrl } = await import("./hotstar-commands.js");
+    expect(hotstarSearchUrl("cricket")).toBeNull();
+  });
 });

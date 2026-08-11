@@ -8,12 +8,18 @@ import type {
   SourcePage,
   PlaybackInfo,
 } from "@coosy/shared";
-import { translateNetflixCommand } from "./netflix-commands.js";
+import {
+  netflixSearchUrl,
+  translateNetflixCommand,
+} from "./netflix-commands.js";
 
 const CAPABILITIES: SourceCapabilities = {
   supportsSeek: true,
   supportsNextEpisode: true,
   supportsVolume: true,
+  supportsScroll: true,
+  supportsSearch: true,
+  supportsBrowseNavigate: true,
 };
 
 const ICON: SourceIcon = {
@@ -68,6 +74,14 @@ export class NetflixSource implements MediaSource {
   }
 
   async handleCommand(command: RemoteCommand): Promise<CommandResult> {
+    if (command.type === "search") {
+      const url = netflixSearchUrl(command.query);
+      if (!url) return { ok: false, reason: "unsupported" };
+      if (!this.page) return { ok: false, reason: "no-active-session" };
+      await this.page.navigate(url);
+      return { ok: true };
+    }
+
     if (!this.input) {
       return { ok: false, reason: "no-active-session" };
     }

@@ -20,4 +20,24 @@ describe("translateYoutubeCommand", () => {
   it("does not claim next-episode without modifier support", () => {
     expect(translateYoutubeCommand({ type: "next-episode" })).toBeNull();
   });
+
+  it("maps browse navigate, activate, and scroll", () => {
+    expect(
+      translateYoutubeCommand({ type: "navigate", direction: "up" }),
+    ).toEqual(["ArrowUp"]);
+    expect(translateYoutubeCommand({ type: "activate" })).toEqual(["Enter"]);
+    expect(
+      translateYoutubeCommand({ type: "scroll", direction: "up" }),
+    ).toEqual(["PageUp"]);
+  });
+});
+
+describe("youtubeSearchUrl", () => {
+  it("builds a results URL", async () => {
+    const { youtubeSearchUrl } = await import("./youtube-commands.js");
+    expect(youtubeSearchUrl("lofi")).toBe(
+      "https://www.youtube.com/results?search_query=lofi",
+    );
+    expect(youtubeSearchUrl("")).toBeNull();
+  });
 });

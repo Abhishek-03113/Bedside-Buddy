@@ -43,6 +43,9 @@ vi.mock("./sources/registry.js", () => {
       supportsSeek: true,
       supportsNextEpisode: false,
       supportsVolume: true,
+      supportsScroll: true,
+      supportsSearch: true,
+      supportsBrowseNavigate: true,
     },
     handleCommand,
   };
@@ -120,6 +123,9 @@ describe("remote server foundation", () => {
                 supportsSeek: true,
                 supportsNextEpisode: false,
                 supportsVolume: true,
+                supportsScroll: true,
+                supportsSearch: true,
+                supportsBrowseNavigate: true,
               },
             } as MediaSource)
           : null,
@@ -228,6 +234,51 @@ describe("remote server foundation", () => {
     );
     expect(okResult.result).toEqual({ ok: true });
     expect(__handleCommand).toHaveBeenCalledWith({ type: "toggle-play-pause" });
+
+    ws.send(
+      JSON.stringify({
+        kind: "command",
+        requestId: "c-scroll",
+        command: { type: "scroll", direction: "down" },
+      }),
+    );
+    await waitForMessage(
+      ws,
+      (m) => m.kind === "command-result" && m.requestId === "c-scroll",
+    );
+    expect(__handleCommand).toHaveBeenCalledWith({
+      type: "scroll",
+      direction: "down",
+    });
+
+    ws.send(
+      JSON.stringify({
+        kind: "command",
+        requestId: "c-search",
+        command: { type: "search", query: "dark" },
+      }),
+    );
+    await waitForMessage(
+      ws,
+      (m) => m.kind === "command-result" && m.requestId === "c-search",
+    );
+    expect(__handleCommand).toHaveBeenCalledWith({
+      type: "search",
+      query: "dark",
+    });
+
+    ws.send(
+      JSON.stringify({
+        kind: "nav",
+        requestId: "n-home",
+        action: "home",
+      }),
+    );
+    await waitForMessage(
+      ws,
+      (m) => m.kind === "toast" && m.message === "nav:home",
+    );
+    expect(navActions).toContain("home");
 
     // Trusted reconnect without code
     ws.close();

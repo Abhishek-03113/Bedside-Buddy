@@ -27,7 +27,32 @@ export function translateYoutubeCommand(
       return command.direction === "up" ? ["ArrowUp"] : ["ArrowDown"];
     case "next-episode":
       return null;
+    case "scroll":
+      return command.direction === "up" ? ["PageUp"] : ["PageDown"];
+    case "navigate":
+      switch (command.direction) {
+        case "up":
+          return ["ArrowUp"];
+        case "down":
+          return ["ArrowDown"];
+        case "left":
+          return ["ArrowLeft"];
+        case "right":
+          return ["ArrowRight"];
+      }
+      return null;
+    case "activate":
+      return ["Enter"];
+    case "search":
+      return null;
     default:
       return null;
   }
+}
+
+/** YouTube search results URL — only place this path knowledge lives. */
+export function youtubeSearchUrl(query: string): string | null {
+  const q = query.trim();
+  if (!q) return null;
+  return `https://www.youtube.com/results?search_query=${encodeURIComponent(q)}`;
 }

@@ -19,4 +19,23 @@ describe("translatePrimeCommand", () => {
   it("does not invent a next-episode binding", () => {
     expect(translatePrimeCommand({ type: "next-episode" })).toBeNull();
   });
+
+  it("maps browse navigate, activate, and scroll", () => {
+    expect(
+      translatePrimeCommand({ type: "navigate", direction: "right" }),
+    ).toEqual(["ArrowRight"]);
+    expect(translatePrimeCommand({ type: "activate" })).toEqual(["Enter"]);
+    expect(
+      translatePrimeCommand({ type: "scroll", direction: "down" }),
+    ).toEqual(["PageDown"]);
+  });
+});
+
+describe("primeSearchUrl", () => {
+  it("builds a phrase search URL", async () => {
+    const { primeSearchUrl } = await import("./prime-commands.js");
+    expect(primeSearchUrl("reacher")).toBe(
+      "https://www.primevideo.com/search?phrase=reacher",
+    );
+  });
 });

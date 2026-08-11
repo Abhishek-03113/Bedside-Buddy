@@ -18,7 +18,7 @@ export function getLanIPv4(): string | null {
   for (const entries of Object.values(nets)) {
     if (!entries) continue;
     for (const entry of entries) {
-      if (entry.family !== "IPv4" && entry.family !== 4) continue;
+      if (String(entry.family) !== "IPv4") continue;
       if (entry.internal) continue;
       const score = scoreLanAddress(entry.address);
       if (!best || score > best.score) {

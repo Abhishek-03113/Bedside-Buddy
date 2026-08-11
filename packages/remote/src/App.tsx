@@ -4,6 +4,7 @@ import type {
   SourceCapabilities,
 } from "@coosy/shared";
 import { RemoteControls } from "./screens/RemoteControls";
+import { useRemoteToast } from "./use-remote-toast";
 import {
   createWsClient,
   resolveWsUrl,
@@ -52,8 +53,8 @@ function RemoteApp() {
   const [needsPairing, setNeedsPairing] = useState(false);
   const [pairingCode, setPairingCode] = useState("");
   const [pairingError, setPairingError] = useState<string | null>(null);
-  const [lastFeedback, setLastFeedback] = useState<string | null>(null);
   const [bootError, setBootError] = useState<string | null>(null);
+  const { toast, show: showToast, clear: clearToast } = useRemoteToast();
 
   useEffect(() => {
     try {
@@ -74,7 +75,7 @@ function RemoteApp() {
         setActiveSourceId(ack.activeSourceId);
         setMode(ack.mode ?? (ack.activeSourceId ? "player" : "launcher"));
         setSources(ack.sources ?? []);
-        setLastFeedback(null);
+        clearToast();
       });
 
       ws.onContext((ctx) => {
@@ -89,12 +90,12 @@ function RemoteApp() {
           setNeedsPairing(true);
           setPairingError(message);
         } else {
-          setLastFeedback(message);
+          showToast({ message, ok: false });
         }
       });
 
-      ws.onToast((toast) => {
-        setLastFeedback(toast.message);
+      ws.onToast((payload) => {
+        showToast(payload);
       });
 
       setClient(ws);
@@ -103,6 +104,8 @@ function RemoteApp() {
       setBootError(err instanceof Error ? err.message : String(err));
       return undefined;
     }
+    // Mount-only WS session; toast helpers are stable via useCallback.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- connect once
   }, []);
 
   const activeSourceName = useMemo(() => {
@@ -135,8 +138,8 @@ function RemoteApp() {
         mode={mode}
         activeSourceName={activeSourceName}
         capabilities={capabilities}
-        feedback={lastFeedback}
-        onFeedback={setLastFeedback}
+        toast={toast}
+        onToast={showToast}
       />
     );
   }
@@ -173,6 +176,16 @@ function RemoteApp() {
         </button>
       </form>
       {pairingError ? <p className="remote__error">{pairingError}</p> : null}
+      {toast ? (
+        <p
+          className={`remote__toast remote__toast--visible${
+            toast.ok ? "" : " remote__toast--err"
+          }`}
+          aria-live="polite"
+        >
+          {toast.message}
+        </p>
+      ) : null}
     </main>
   );
 }

@@ -56,21 +56,33 @@ describe("source registry", () => {
       supportsSeek: true,
       supportsNextEpisode: true,
       supportsVolume: true,
+      supportsScroll: true,
+      supportsSearch: true,
+      supportsBrowseNavigate: true,
     });
     expect(youtube.capabilities).toEqual({
       supportsSeek: true,
       supportsNextEpisode: false,
       supportsVolume: true,
+      supportsScroll: true,
+      supportsSearch: true,
+      supportsBrowseNavigate: true,
     });
     expect(hotstar.capabilities).toEqual({
       supportsSeek: true,
       supportsNextEpisode: false,
       supportsVolume: true,
+      supportsScroll: true,
+      supportsSearch: false,
+      supportsBrowseNavigate: true,
     });
     expect(prime.capabilities).toEqual({
       supportsSeek: true,
       supportsNextEpisode: false,
       supportsVolume: true,
+      supportsScroll: true,
+      supportsSearch: true,
+      supportsBrowseNavigate: true,
     });
   });
 });

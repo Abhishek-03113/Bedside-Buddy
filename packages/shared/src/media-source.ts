@@ -7,6 +7,12 @@ export interface SourceCapabilities {
   supportsSeek: boolean;
   supportsNextEpisode: boolean;
   supportsVolume: boolean;
+  /** Page / section scroll while browsing the source. */
+  supportsScroll: boolean;
+  /** Generic text search via RemoteCommand.search. */
+  supportsSearch: boolean;
+  /** D-pad focus movement + activate among media tiles. */
+  supportsBrowseNavigate: boolean;
 }
 
 export interface SourceIcon {
