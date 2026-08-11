@@ -13,6 +13,12 @@ export interface Rect extends Size {
   y: number;
 }
 
+/** True when two content-relative rects are identical (used to skip setBounds). */
+export function rectsEqual(a: Rect | null | undefined, b: Rect): boolean {
+  if (!a) return false;
+  return a.x === b.x && a.y === b.y && a.width === b.width && a.height === b.height;
+}
+
 /** True when the view has never navigated to a real source URL. */
 export function isBlankSourceUrl(url: string | undefined | null): boolean {
   return !url || url === "about:blank";

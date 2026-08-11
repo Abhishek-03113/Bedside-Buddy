@@ -3,7 +3,13 @@ import { WebContentsView as ElectronWebContentsView } from "electron";
 import type { CommandResult, MediaSource } from "@coosy/shared";
 import { SOURCES, listSources } from "./sources/registry.js";
 import { touchSource, setAppState } from "./db/db.js";
-import { computeSourceViewportBounds, isBlankSourceUrl } from "./viewport.js";
+import {
+  computeSourceViewportBounds,
+  isBlankSourceUrl,
+  rectsEqual,
+  type Rect,
+} from "./viewport.js";
+import { perfInc } from "../shared/perf.js";
 
 export type ContextMode = "launcher" | "player";
 
@@ -27,6 +33,8 @@ export class SourceHost {
   private activeSourceId: string | null = null;
   private resizeHandler: (() => void) | null = null;
   private boundInputSourceId: string | null = null;
+  /** Last bounds successfully applied to the active view — skip identical setBounds. */
+  private lastSyncedBounds: Rect | null = null;
 
   constructor(window: BrowserWindow, events: SourceHostEvents) {
     this.window = window;
@@ -36,6 +44,7 @@ export class SourceHost {
     // macOS fullscreen transitions can change content size without a plain resize.
     this.window.on("enter-full-screen", this.resizeHandler);
     this.window.on("leave-full-screen", this.resizeHandler);
+    perfInc("listener.register");
   }
 
   dispose(): void {
@@ -44,6 +53,7 @@ export class SourceHost {
       this.window.removeListener("enter-full-screen", this.resizeHandler);
       this.window.removeListener("leave-full-screen", this.resizeHandler);
       this.resizeHandler = null;
+      perfInc("listener.cleanup");
     }
     for (const sourceId of [...this.views.keys()]) {
       this.detachView(sourceId);
@@ -53,6 +63,7 @@ export class SourceHost {
     this.attached.clear();
     this.activeSourceId = null;
     this.boundInputSourceId = null;
+    this.lastSyncedBounds = null;
     this.setLauncherThrottling(false);
   }
 
@@ -76,12 +87,24 @@ export class SourceHost {
   }
 
   async showSource(sourceId: string): Promise<void> {
+    perfInc("sourceHost.showSource");
     const source = SOURCES[sourceId];
     if (!source) {
       throw new Error(`Unknown source: ${sourceId}`);
     }
 
-    // Idempotent reopen of the already-visible source.
+    // Idempotent: already showing this source and attached — avoid churn.
+    if (this.activeSourceId === sourceId && this.attached.has(sourceId)) {
+      const existing = this.views.get(sourceId);
+      if (existing && !existing.webContents.isDestroyed()) {
+        perfInc("sourceHost.showSource.noop");
+        this.startLoadIfNeeded(existing, source);
+        this.syncBounds(existing);
+        return;
+      }
+    }
+
+    // Same source but detached / recovering — reattach without DB rewrite if still active.
     if (this.activeSourceId === sourceId) {
       const existing = this.ensureLiveView(source);
       this.startLoadIfNeeded(existing, source);
@@ -140,15 +163,20 @@ export class SourceHost {
   }
 
   async showLauncher(): Promise<void> {
-    if (this.activeSourceId) {
-      const active = SOURCES[this.activeSourceId];
-      if (active) {
-        void active.handleCommand({ type: "pause" });
-      }
-      this.detachView(this.activeSourceId);
-      // Keep view alive for resume — do not destroy (architecture §7 / PRD §6.1)
+    // Idempotent: already on launcher.
+    if (this.activeSourceId === null) {
+      this.setLauncherThrottling(false);
+      return;
     }
+
+    const active = SOURCES[this.activeSourceId];
+    if (active) {
+      void active.handleCommand({ type: "pause" });
+    }
+    this.detachView(this.activeSourceId);
+    // Keep view alive for resume — do not destroy (architecture §7 / PRD §6.1)
     this.activeSourceId = null;
+    this.lastSyncedBounds = null;
     setAppState("last_active_source", "");
     this.setLauncherThrottling(false);
     this.emitContext("launcher");
@@ -222,6 +250,7 @@ export class SourceHost {
 
     view.webContents.on("before-input-event", hook);
     this.inputHooks.set(sourceId, hook);
+    perfInc("listener.register");
   }
 
   private unbindEscapeHook(sourceId: string): void {
@@ -229,11 +258,13 @@ export class SourceHost {
     const view = this.views.get(sourceId);
     if (hook && view && !view.webContents.isDestroyed()) {
       view.webContents.removeListener("before-input-event", hook);
+      perfInc("listener.cleanup");
     }
     this.inputHooks.delete(sourceId);
   }
 
   private createView(source: MediaSource): WebContentsView {
+    perfInc("sourceHost.createView");
     const view = new ElectronWebContentsView({
       webPreferences: {
         partition: source.sessionPartition,
@@ -252,12 +283,13 @@ export class SourceHost {
   private attachView(sourceId: string, view: WebContentsView): void {
     this.syncBounds(view);
     if (this.attached.has(sourceId)) {
-      // Re-add moves the child to the top of the z-order.
-      this.window.contentView.addChildView(view);
-    } else {
-      this.window.contentView.addChildView(view);
-      this.attached.add(sourceId);
+      // Already attached — avoid redundant addChildView when it is the sole media child.
+      perfInc("sourceHost.showHide");
+      return;
     }
+    this.window.contentView.addChildView(view);
+    this.attached.add(sourceId);
+    perfInc("sourceHost.attach");
     // Fullscreen enter can settle after the first paint — resync once.
     setImmediate(() => {
       if (this.activeSourceId === sourceId && !view.webContents.isDestroyed()) {
@@ -272,6 +304,7 @@ export class SourceHost {
     if (this.attached.has(sourceId)) {
       try {
         this.window.contentView.removeChildView(view);
+        perfInc("sourceHost.detach");
       } catch {
         // View may already be detached during window teardown.
       }
@@ -289,7 +322,14 @@ export class SourceHost {
   private syncBounds(view: WebContentsView): void {
     // contentView bounds are the authoritative parent-relative size for child views.
     const content = this.window.contentView.getBounds();
-    view.setBounds(computeSourceViewportBounds(content));
+    const next = computeSourceViewportBounds(content);
+    if (rectsEqual(this.lastSyncedBounds, next)) {
+      perfInc("sourceHost.setBounds.skipped");
+      return;
+    }
+    view.setBounds(next);
+    this.lastSyncedBounds = next;
+    perfInc("sourceHost.setBounds");
   }
 
   private setLauncherThrottling(enabled: boolean): void {

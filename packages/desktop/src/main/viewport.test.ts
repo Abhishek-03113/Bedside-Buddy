@@ -3,6 +3,7 @@ import {
   computeSourceViewportBounds,
   isBlankSourceUrl,
   nextHostState,
+  rectsEqual,
   shouldReuseSourceView,
 } from "./viewport.js";
 
@@ -23,6 +24,15 @@ describe("computeSourceViewportBounds", () => {
       width: 800,
       height: 0,
     });
+  });
+});
+
+describe("rectsEqual", () => {
+  it("skips duplicate bounds updates when rects are identical", () => {
+    const a = { x: 0, y: 0, width: 1920, height: 1080 };
+    expect(rectsEqual(a, { ...a })).toBe(true);
+    expect(rectsEqual(a, { ...a, width: 1280 })).toBe(false);
+    expect(rectsEqual(null, a)).toBe(false);
   });
 });
 
