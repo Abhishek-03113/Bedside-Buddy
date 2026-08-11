@@ -9,6 +9,6 @@
     },
     "noEmit": true
   },
-  "include": ["src/renderer/**/*"],
+  "include": ["src/renderer/**/*", "src/shared/**/*"],
   "references": [{ "path": "../shared" }]
 }
