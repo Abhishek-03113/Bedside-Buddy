@@ -1,0 +1,19 @@
+appId: com.coosy.app
+productName: CoOSy
+directories:
+  output: release
+files:
+  - out/**/*
+  - package.json
+mac:
+  category: public.app-category.entertainment
+  target:
+    - dmg
+    - zip
+linux:
+  target:
+    - AppImage
+  category: AudioVideo
+win:
+  target:
+    - nsis
