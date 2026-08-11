@@ -3,6 +3,7 @@ import type { SourceHost } from "./source-host.js";
 import { listSources } from "./sources/registry.js";
 import { getLanIPv4 } from "./lan.js";
 import { getOrCreatePairingCode } from "./pairing.js";
+import type { ToastOverlay } from "./toast-overlay.js";
 
 export interface ConnectionInfo {
   ip: string | null;
@@ -57,4 +58,29 @@ export function sendNavToRenderer(
   action: string,
 ): void {
   window?.webContents.send("nav", action);
+}
+
+export function sendContextToRenderer(
+  window: BrowserWindow | null,
+  payload: { mode: "launcher" | "player"; activeSourceId: string | null },
+): void {
+  window?.webContents.send("context", payload);
+}
+
+/**
+ * Player-mode toasts use a temporary overlay window (source is fullscreen).
+ * Launcher-mode toasts still go to the React renderer.
+ */
+export function presentToast(opts: {
+  window: BrowserWindow | null;
+  host: SourceHost | null;
+  overlay: ToastOverlay | null;
+  payload: { message: string; ok: boolean };
+}): void {
+  const { window, host, overlay, payload } = opts;
+  if (host?.getActiveSourceId() && overlay) {
+    overlay.show(payload);
+    return;
+  }
+  sendToastToRenderer(window, payload);
 }

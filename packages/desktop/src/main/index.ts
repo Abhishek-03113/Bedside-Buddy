@@ -6,11 +6,13 @@ import { startWsServer, type WsServer } from "./ws-server.js";
 import { startDiscovery } from "./discovery.js";
 import { ensureWidevineReady } from "./widevine.js";
 import {
+  presentToast,
   registerIpcHandlers,
+  sendContextToRenderer,
   sendNavToRenderer,
-  sendToastToRenderer,
 } from "./ipc.js";
 import { getOrCreatePairingCode } from "./pairing.js";
+import { ToastOverlay } from "./toast-overlay.js";
 import type { SourceCapabilities } from "@coosy/shared";
 import { SOURCES } from "./sources/registry.js";
 
@@ -18,6 +20,7 @@ let mainWindow: BrowserWindow | null = null;
 let sourceHost: SourceHost | null = null;
 let wsServer: WsServer | null = null;
 let stopDiscovery: (() => void) | null = null;
+let toastOverlay: ToastOverlay | null = null;
 
 async function createWindow(): Promise<void> {
   mainWindow = new BrowserWindow({
@@ -25,14 +28,20 @@ async function createWindow(): Promise<void> {
     height: 720,
     fullscreen: true,
     autoHideMenuBar: true,
+    // Avoid a native title strip painting above the media surface on macOS.
+    titleBarStyle: "hidden",
     backgroundColor: "#0a0a0a",
     webPreferences: {
       preload: join(__dirname, "../preload/index.js"),
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: true,
+      backgroundThrottling: true,
     },
   });
+
+  toastOverlay = new ToastOverlay();
+  toastOverlay.attach(mainWindow);
 
   sourceHost = new SourceHost(mainWindow, {
     onContextChange: ({ mode, activeSourceId }) => {
@@ -45,6 +54,10 @@ async function createWindow(): Promise<void> {
         activeSourceId,
         capabilities,
       });
+      sendContextToRenderer(mainWindow, { mode, activeSourceId });
+      if (mode === "launcher") {
+        toastOverlay?.hide();
+      }
     },
   });
 
@@ -54,10 +67,15 @@ async function createWindow(): Promise<void> {
     await mainWindow.loadFile(join(__dirname, "../renderer/index.html"));
   }
 
+  // Warm source WebContentsViews so the first tile click is attach-only.
+  sourceHost.warmSources();
+
   mainWindow.on("closed", () => {
     sourceHost?.dispose();
+    toastOverlay?.dispose();
     mainWindow = null;
     sourceHost = null;
+    toastOverlay = null;
   });
 }
 
@@ -76,7 +94,13 @@ app.whenReady().then(async () => {
 
   wsServer = await startWsServer({
     getSourceHost: () => sourceHost,
-    onToast: (payload) => sendToastToRenderer(mainWindow, payload),
+    onToast: (payload) =>
+      presentToast({
+        window: mainWindow,
+        host: sourceHost,
+        overlay: toastOverlay,
+        payload,
+      }),
     onNav: (action) => sendNavToRenderer(mainWindow, action),
   });
 
