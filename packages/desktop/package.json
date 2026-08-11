@@ -10,7 +10,7 @@
     "preview": "env -u ELECTRON_RUN_AS_NODE electron-vite preview",
     "typecheck": "tsc -p tsconfig.node.json --noEmit && tsc -p tsconfig.web.json --noEmit",
     "clean": "rm -rf out dist release",
-    "rebuild-native": "electron-builder install-app-deps",
+    "rebuild-native": "electron-rebuild -v 42.8.0+wvcus -d https://github.com/castlabs/electron-releases/releases/download/v",
     "ws-smoke": "node ./scripts/ws-smoke.mjs",
     "assets:logos": "node ./scripts/fetch-source-logos.mjs",
     "copy-remote-ui": "node ./scripts/copy-remote-ui.mjs",
@@ -25,6 +25,7 @@
     "ws": "^8.18.0"
   },
   "devDependencies": {
+    "@electron/rebuild": "^4.2.0",
     "@types/better-sqlite3": "^7.6.13",
     "@types/node": "^22.10.2",
     "@types/react": "^19.0.2",

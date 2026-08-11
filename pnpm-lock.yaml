@@ -36,6 +36,9 @@ importers:
         specifier: ^8.18.0
         version: 8.21.3
     devDependencies:
+      '@electron/rebuild':
+        specifier: ^4.2.0
+        version: 4.2.0
       '@types/better-sqlite3':
         specifier: ^7.6.13
         version: 7.6.13
@@ -233,6 +236,11 @@ packages:
   '@electron/rebuild@3.6.1':
     resolution: {integrity: sha512-f6596ZHpEq/YskUd8emYvOUne89ij8mQgjYFA5ru25QwbrRO+t1SImofdDv7kKOuWCmVOuU5tvfkbgGxIl3E/w==}
     engines: {node: '>=12.13.0'}
+    hasBin: true
+
+  '@electron/rebuild@4.2.0':
+    resolution: {integrity: sha512-RKL/O+jGoXJMxrx/5771y1n0xTKmFuOYGO3gMmwypBM6rsH0kou0mswwdXA2JrhIkE4xyC7v9vGk0n6NPzgOxQ==}
+    engines: {node: '>=22.12.0'}
     hasBin: true
 
   '@electron/universal@2.0.1':
@@ -1509,6 +1517,10 @@ packages:
     resolution: {integrity: sha512-W5ZNO5KRPB5TkYmGVD9F6YqhsglXJzE6etpbmT+f6EQElhiX/UTG551cnsRGvLG3fyZEg9HwaDmNmj5nwJ4z9g==}
     engines: {node: '>=10'}
 
+  node-abi@4.33.0:
+    resolution: {integrity: sha512-vLBWCKb+7LWsX+TbfzWOkw0W81m377tyx3hOweBTjO43CXZnRGS1/JPWs20fr0PgZyDXk6ROYrylsEycK8raDA==}
+    engines: {node: '>=22.12.0'}
+
   node-addon-api@1.7.2:
     resolution: {integrity: sha512-ibPK3iA+vaY1eEjESkQkM0BbCqFOaZMiXRTtdB0u7b4djtY6JnsjvPdUHVMg6xQt3B8fpTTWHI9A+ADjM9frzg==}
 
@@ -2210,6 +2222,17 @@ snapshots:
       semver: 7.8.5
       tar: 6.2.1
       yargs: 17.7.3
+    transitivePeerDependencies:
+      - supports-color
+
+  '@electron/rebuild@4.2.0':
+    dependencies:
+      '@malept/cross-spawn-promise': 2.0.0
+      debug: 4.4.3
+      node-abi: 4.33.0
+      node-api-version: 0.2.1
+      node-gyp: 10.3.1
+      read-binary-file-arch: 1.0.6
     transitivePeerDependencies:
       - supports-color
 
@@ -3549,6 +3572,10 @@ snapshots:
   negotiator@0.6.4: {}
 
   node-abi@3.94.0:
+    dependencies:
+      semver: 7.8.5
+
+  node-abi@4.33.0:
     dependencies:
       semver: 7.8.5
 
