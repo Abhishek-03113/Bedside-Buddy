@@ -10,6 +10,7 @@ Implemented and verified on 2026-08-11.
 - SourceHost pauses before switching sources or returning to the launcher.
 - Retained source views are detached, not destroyed, preserving sessions for reuse.
 - Netflix, YouTube, Hotstar, and Prime Video use an idempotent DOM media pause.
+- Pause requests are fire-and-forget and deduplicated, so they do not delay attaching the next retained source view.
 
 ## Verification
 
