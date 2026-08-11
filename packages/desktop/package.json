@@ -5,14 +5,15 @@
   "description": "CoOSy Electron shell — TV launcher + local remote server",
   "main": "out/main/index.js",
   "scripts": {
-    "dev": "ELECTRON_RUN_AS_NODE= electron-vite dev",
-    "build": "electron-vite build",
-    "preview": "ELECTRON_RUN_AS_NODE= electron-vite preview",
+    "dev": "env -u ELECTRON_RUN_AS_NODE electron-vite dev",
+    "build": "pnpm --filter @coosy/remote build && electron-vite build && node ./scripts/copy-remote-ui.mjs",
+    "preview": "env -u ELECTRON_RUN_AS_NODE electron-vite preview",
     "typecheck": "tsc -p tsconfig.node.json --noEmit && tsc -p tsconfig.web.json --noEmit",
     "clean": "rm -rf out dist release",
     "rebuild-native": "electron-builder install-app-deps",
     "ws-smoke": "node ./scripts/ws-smoke.mjs",
     "assets:logos": "node ./scripts/fetch-source-logos.mjs",
+    "copy-remote-ui": "node ./scripts/copy-remote-ui.mjs",
     "test": "vitest run"
   },
   "dependencies": {

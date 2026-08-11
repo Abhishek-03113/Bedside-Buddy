@@ -12,6 +12,7 @@
     "dev": "pnpm --filter @coosy/desktop dev",
     "dev:remote": "pnpm --filter @coosy/remote dev",
     "typecheck": "pnpm -r run typecheck",
+    "test": "pnpm --filter @coosy/desktop test && pnpm --filter @coosy/remote test",
     "clean": "pnpm -r run clean"
   },
   "devDependencies": {

@@ -5,6 +5,8 @@ directories:
 files:
   - out/**/*
   - package.json
+  # Remote phone UI (HTTP static) — produced by scripts/copy-remote-ui.mjs
+  - out/remote/**/*
 mac:
   category: public.app-category.entertainment
   target:
