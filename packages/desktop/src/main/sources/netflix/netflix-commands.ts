@@ -1,8 +1,14 @@
 import type { RemoteCommand } from "@coosy/shared";
 
 /**
- * Maps generic RemoteCommand → Netflix keyboard events.
- * This is the ONLY place that knows Netflix keybinds.
+ * Maps generic RemoteCommand → key codes for Netflix.
+ * Values are mapped again in SourceHost to Electron accelerator names.
+ *
+ * Live-player notes (POC):
+ * - Space is the reliable play/pause baseline across Netflix redesigns.
+ * - Arrow seek/volume work when the player has keyboard focus; first command
+ *   after load may need a prior click (trackpad mode — deferred).
+ * - KeyN for next-episode is best-effort; Netflix sometimes uses UI-only.
  */
 export function translateNetflixCommand(
   command: RemoteCommand,
@@ -17,8 +23,6 @@ export function translateNetflixCommand(
       if (command.deltaSeconds < 0) return ["ArrowLeft"];
       return null;
     case "next-episode":
-      // Netflix "next episode" is often 'N' or a UI click; Space/keys vary.
-      // Baseline: 'N' — revisit when validating against a live player.
       return ["KeyN"];
     case "volume":
       return command.direction === "up" ? ["ArrowUp"] : ["ArrowDown"];

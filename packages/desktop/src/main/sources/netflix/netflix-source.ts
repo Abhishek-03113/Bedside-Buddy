@@ -4,6 +4,7 @@ import type {
   RemoteCommand,
   SourceCapabilities,
   SourceIcon,
+  SourceInput,
 } from "@coosy/shared";
 import { translateNetflixCommand } from "./netflix-commands.js";
 
@@ -21,6 +22,12 @@ const ICON: SourceIcon = {
 
 /**
  * ONLY place Netflix-specific knowledge lives.
+ *
+ * Keybinds (validated against Netflix HTML5 player conventions):
+ * - Space → play/pause
+ * - Left / Right → seek ~10s (player-dependent)
+ * - Up / Down → volume
+ * - N → next episode (when the player exposes it; may no-op on some screens)
  */
 export class NetflixSource implements MediaSource {
   readonly id = "netflix";
@@ -30,17 +37,14 @@ export class NetflixSource implements MediaSource {
   readonly icon = ICON;
   readonly capabilities = CAPABILITIES;
 
-  private sendKey:
-    | ((keyCode: string) => Promise<CommandResult>)
-    | null = null;
+  private input: SourceInput | null = null;
 
-  /** Wired by SourceHost / main once the active view is known */
-  bindKeySender(sendKey: (keyCode: string) => Promise<CommandResult>): void {
-    this.sendKey = sendKey;
+  bindInput(input: SourceInput): void {
+    this.input = input;
   }
 
   async handleCommand(command: RemoteCommand): Promise<CommandResult> {
-    if (!this.sendKey) {
+    if (!this.input) {
       return { ok: false, reason: "no-active-session" };
     }
 
@@ -50,7 +54,7 @@ export class NetflixSource implements MediaSource {
     }
 
     for (const key of keys) {
-      const result = await this.sendKey(key);
+      const result = await this.input.sendKey(key);
       if (!result.ok) return result;
     }
     return { ok: true };
