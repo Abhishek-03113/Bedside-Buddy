@@ -46,6 +46,23 @@ const api = {
     ipcRenderer.on("nav", listener);
     return () => ipcRenderer.removeListener("nav", listener);
   },
+
+  onContext: (
+    handler: (payload: {
+      mode: "launcher" | "player";
+      activeSourceId: string | null;
+    }) => void,
+  ) => {
+    const listener = (
+      _event: Electron.IpcRendererEvent,
+      payload: {
+        mode: "launcher" | "player";
+        activeSourceId: string | null;
+      },
+    ) => handler(payload);
+    ipcRenderer.on("context", listener);
+    return () => ipcRenderer.removeListener("context", listener);
+  },
 };
 
 contextBridge.exposeInMainWorld("coosy", api);

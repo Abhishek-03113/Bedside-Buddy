@@ -1,50 +1,17 @@
-import { useEffect, useState } from "react";
-
-interface PlayerOverlayProps {
-  sourceId: string;
-  onHome: () => void;
-}
-
 /**
- * Bottom chrome while a source WebContentsView fills the rest of the window.
- * Toasts confirm remote command results (honest feedback).
+ * Active-source surface in the launcher renderer.
+ *
+ * The media WebContentsView is fullscreen in the main process. This component
+ * intentionally renders no permanent chrome — toasts are a temporary overlay
+ * window owned by main. Kept mounted so React unmounts HomeScreen work while
+ * a source is active.
  */
-export function PlayerOverlay({ sourceId, onHome }: PlayerOverlayProps) {
-  const [toast, setToast] = useState<{ message: string; ok: boolean } | null>(
-    null,
-  );
-
-  useEffect(() => {
-    if (!window.coosy?.onToast) return;
-    let hideTimer: number | undefined;
-    const unsubscribe = window.coosy.onToast((payload) => {
-      setToast(payload);
-      window.clearTimeout(hideTimer);
-      hideTimer = window.setTimeout(() => setToast(null), 1500);
-    });
-    return () => {
-      unsubscribe();
-      window.clearTimeout(hideTimer);
-    };
-  }, []);
-
+export function PlayerOverlay({ sourceId }: { sourceId: string }) {
   return (
-    <div className="player-overlay" data-source={sourceId}>
-      <div className="player-chrome">
-        <button type="button" className="player-chrome__home" onClick={onHome}>
-          Home
-        </button>
-        {toast ? (
-          <div
-            className={`remote-toast ${toast.ok ? "remote-toast--ok" : "remote-toast--err"}`}
-            role="status"
-          >
-            {toast.message}
-          </div>
-        ) : (
-          <span className="player-chrome__hint">Remote connected · {sourceId}</span>
-        )}
-      </div>
-    </div>
+    <div
+      className="player-surface"
+      data-source={sourceId}
+      aria-hidden="true"
+    />
   );
 }

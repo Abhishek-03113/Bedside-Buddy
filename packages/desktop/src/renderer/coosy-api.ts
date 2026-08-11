@@ -23,4 +23,10 @@ export interface CoosyRendererApi {
     handler: (payload: { message: string; ok: boolean }) => void,
   ) => () => void;
   onNav: (handler: (action: NavAction) => void) => () => void;
+  onContext: (
+    handler: (payload: {
+      mode: "launcher" | "player";
+      activeSourceId: string | null;
+    }) => void,
+  ) => () => void;
 }

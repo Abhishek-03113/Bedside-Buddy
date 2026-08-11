@@ -115,46 +115,25 @@ body,
   color: var(--muted);
 }
 
-.player-overlay {
+/* Empty launcher surface under the fullscreen source WebContentsView. */
+.player-surface {
   position: fixed;
   inset: 0;
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-end;
   pointer-events: none;
-  background: transparent;
+  background: #000;
 }
 
-.player-chrome {
-  pointer-events: auto;
-  height: 72px;
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  padding: 0 1.25rem;
-  background: #111;
-  border-top: 1px solid #2a2a2a;
-}
-
-.player-chrome__home {
-  border: 1px solid #444;
-  background: #1a1a1a;
-  color: var(--fg);
-  padding: 0.5rem 1rem;
-  border-radius: 8px;
-  cursor: pointer;
-}
-
-.player-chrome__hint {
-  color: var(--muted);
-  font-size: 0.95rem;
-}
-
+/* Launcher-only toast styles (home / loading). Player toasts use main overlay. */
 .remote-toast {
-  margin-left: auto;
+  position: fixed;
+  left: 50%;
+  bottom: 2rem;
+  transform: translateX(-50%);
   padding: 0.5rem 1rem;
   border-radius: 8px;
   font-size: 1rem;
+  pointer-events: none;
+  z-index: 20;
 }
 
 .remote-toast--ok {
