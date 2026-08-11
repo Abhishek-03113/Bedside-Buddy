@@ -40,6 +40,10 @@ describe("source registry", () => {
 
     const partitions = listSources().map((s) => s.sessionPartition);
     expect(new Set(partitions).size).toBe(partitions.length);
+
+    for (const source of listSources()) {
+      expect(source.icon.src).toBe(`/assets/sources/${source.id}.svg`);
+    }
   });
 
   it("declares honest capabilities per source", () => {
@@ -51,25 +55,21 @@ describe("source registry", () => {
     expect(netflix.capabilities).toEqual({
       supportsSeek: true,
       supportsNextEpisode: true,
-      supportsNowPlayingMetadata: false,
       supportsVolume: true,
     });
     expect(youtube.capabilities).toEqual({
       supportsSeek: true,
       supportsNextEpisode: false,
-      supportsNowPlayingMetadata: false,
       supportsVolume: true,
     });
     expect(hotstar.capabilities).toEqual({
       supportsSeek: true,
       supportsNextEpisode: false,
-      supportsNowPlayingMetadata: false,
       supportsVolume: true,
     });
     expect(prime.capabilities).toEqual({
       supportsSeek: true,
       supportsNextEpisode: false,
-      supportsNowPlayingMetadata: false,
       supportsVolume: true,
     });
   });

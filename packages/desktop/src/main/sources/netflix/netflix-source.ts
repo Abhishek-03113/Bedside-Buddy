@@ -5,18 +5,19 @@ import type {
   SourceCapabilities,
   SourceIcon,
   SourceInput,
+  SourcePage,
+  PlaybackInfo,
 } from "@coosy/shared";
 import { translateNetflixCommand } from "./netflix-commands.js";
 
 const CAPABILITIES: SourceCapabilities = {
   supportsSeek: true,
   supportsNextEpisode: true,
-  supportsNowPlayingMetadata: false, // honest v1 — architecture §4
   supportsVolume: true,
 };
 
 const ICON: SourceIcon = {
-  src: "netflix",
+  src: "/assets/sources/netflix.svg",
   alt: "Netflix",
 };
 
@@ -38,9 +39,28 @@ export class NetflixSource implements MediaSource {
   readonly capabilities = CAPABILITIES;
 
   private input: SourceInput | null = null;
+  private page: SourcePage | null = null;
 
   bindInput(input: SourceInput): void {
     this.input = input;
+  }
+
+  bindPage(page: SourcePage): void {
+    this.page = page;
+  }
+
+  getCurrentPlaybackInfo(): PlaybackInfo | null {
+    const contentUrl = this.page?.getUrl() ?? "";
+    return /^https:\/\/(www\.)?netflix\.com\/watch\//.test(contentUrl)
+      ? { sourceId: this.id, contentUrl, ...(this.page?.getTitle() ? { title: this.page.getTitle() } : {}) }
+      : null;
+  }
+
+  async resumePlayback(contentUrl: string): Promise<void> {
+    if (!/^https:\/\/(www\.)?netflix\.com\/watch\//.test(contentUrl)) {
+      throw new Error("Invalid Netflix playback URL");
+    }
+    await this.page?.navigate(contentUrl);
   }
 
   async pausePlayback(): Promise<CommandResult> {

@@ -2,7 +2,7 @@ import type { BrowserWindow, WebContentsView } from "electron";
 import { WebContentsView as ElectronWebContentsView } from "electron";
 import type { CommandResult, MediaSource } from "@coosy/shared";
 import { SOURCES, listSources } from "./sources/registry.js";
-import { touchSource, setAppState } from "./db/db.js";
+import { touchSource, setAppState, upsertPlayback } from "./db/db.js";
 import {
   computeSourceViewportBounds,
   isBlankSourceUrl,
@@ -31,6 +31,7 @@ export class SourceHost {
   private readonly views = new Map<string, WebContentsView>();
   private readonly attached = new Set<string>();
   private readonly inputHooks = new Map<string, (event: Electron.Event, input: Electron.Input) => void>();
+  private readonly playbackHooks = new Map<string, () => void>();
   private readonly pausingSourceIds = new Set<string>();
   private activeSourceId: string | null = null;
   private resizeHandler: (() => void) | null = null;
@@ -60,6 +61,7 @@ export class SourceHost {
     for (const sourceId of [...this.views.keys()]) {
       this.detachView(sourceId);
       this.unbindEscapeHook(sourceId);
+      this.unbindPlaybackHook(sourceId);
     }
     this.views.clear();
     this.attached.clear();
@@ -120,6 +122,7 @@ export class SourceHost {
     }
 
     if (this.activeSourceId && this.activeSourceId !== sourceId) {
+      this.recordPlayback(this.activeSourceId);
       this.pauseSourcePlayback(this.activeSourceId);
       this.detachView(this.activeSourceId);
     }
@@ -136,6 +139,14 @@ export class SourceHost {
     this.setLauncherThrottling(true);
     this.emitContext("player");
     this.startLoadIfNeeded(view, source);
+  }
+
+  /** Source-owned URL validation and navigation after normal retained-view activation. */
+  async resumePlayback(sourceId: string, contentUrl: string): Promise<void> {
+    const source = SOURCES[sourceId];
+    if (!source) throw new Error(`Unknown source: ${sourceId}`);
+    await this.showSource(source.id);
+    await source.resumePlayback?.(contentUrl);
   }
 
   /**
@@ -167,6 +178,7 @@ export class SourceHost {
       return;
     }
 
+    this.recordPlayback(this.activeSourceId);
     this.pauseSourcePlayback(this.activeSourceId);
     this.detachView(this.activeSourceId);
     // Keep view alive for resume — do not destroy (architecture §7 / PRD §6.1)
@@ -192,11 +204,53 @@ export class SourceHost {
     if (existing) {
       this.detachView(source.id);
       this.unbindEscapeHook(source.id);
+      this.unbindPlaybackHook(source.id);
       this.views.delete(source.id);
     }
     const view = this.createView(source);
+    this.bindSourcePage(source, view);
     this.views.set(source.id, view);
+    this.bindPlaybackHook(source.id, source, view);
     return view;
+  }
+
+  private bindSourcePage(source: MediaSource, view: WebContentsView): void {
+    source.bindPage?.({
+      getUrl: () => view.webContents.getURL(),
+      getTitle: () => view.webContents.getTitle(),
+      navigate: async (url: string): Promise<void> => {
+        await view.webContents.loadURL(url);
+      },
+    });
+  }
+
+  private bindPlaybackHook(sourceId: string, source: MediaSource, view: WebContentsView): void {
+    if (this.playbackHooks.has(sourceId)) return;
+    const hook = () => {
+      if (this.activeSourceId === sourceId) this.recordPlayback(sourceId, source);
+    };
+    view.webContents.on("did-navigate", hook);
+    view.webContents.on("did-navigate-in-page", hook);
+    this.playbackHooks.set(sourceId, hook);
+  }
+
+  private unbindPlaybackHook(sourceId: string): void {
+    const hook = this.playbackHooks.get(sourceId);
+    const view = this.views.get(sourceId);
+    if (hook && view && !view.webContents.isDestroyed()) {
+      view.webContents.removeListener("did-navigate", hook);
+      view.webContents.removeListener("did-navigate-in-page", hook);
+    }
+    this.playbackHooks.delete(sourceId);
+  }
+
+  private recordPlayback(sourceId: string, source = SOURCES[sourceId]): void {
+    try {
+      const item = source?.getCurrentPlaybackInfo?.();
+      if (item) upsertPlayback(item);
+    } catch (error) {
+      console.warn(`[playback-history] ${sourceId} capture failed`, error);
+    }
   }
 
   private bindSourceInput(source: MediaSource, view: WebContentsView): void {
