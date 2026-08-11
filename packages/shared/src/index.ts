@@ -8,6 +8,7 @@ export type {
   MediaSource,
   SourceCapabilities,
   SourceIcon,
+  SourceInput,
   NowPlayingInfo,
 } from "./media-source.js";
 

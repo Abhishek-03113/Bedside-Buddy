@@ -39,6 +39,10 @@ MediaSource
 │     // key event, DOM interaction, etc. Returns whether it succeeded,
 │     // so the UI can show an honest toast instead of a fake confirmation.
 │
+├── bindInput?(input: SourceInput): void
+│     // Optional — SourceHost supplies sendKey against the active view.
+│     // Sources that only need keyboard simulation implement this.
+│
 └── capabilities: SourceCapabilities
       // Declares what this source can actually do, so infra never assumes.
 ```

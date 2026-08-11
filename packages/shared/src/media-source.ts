@@ -26,6 +26,14 @@ export interface NowPlayingInfo {
 }
 
 /**
+ * Input bridge supplied by SourceHost so sources can simulate keys
+ * without knowing about Electron view lifecycle.
+ */
+export interface SourceInput {
+  sendKey(keyCode: string): Promise<CommandResult>;
+}
+
+/**
  * The only seam between infra and a streaming platform.
  * Per-source code lives under packages/desktop/src/main/sources/.
  */
@@ -38,6 +46,9 @@ export interface MediaSource {
   readonly capabilities: SourceCapabilities;
 
   handleCommand(command: RemoteCommand): Promise<CommandResult>;
+
+  /** Called when a view becomes available / is rebound after show */
+  bindInput?(input: SourceInput): void;
 
   /** Only present when capabilities.supportsNowPlayingMetadata is true */
   getNowPlaying?(): Promise<NowPlayingInfo | null>;
