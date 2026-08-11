@@ -15,5 +15,6 @@ describe("translateNetflixCommand", () => {
     expect(
       translateNetflixCommand({ type: "volume", direction: "up" }),
     ).toEqual(["ArrowUp"]);
+    expect(translateNetflixCommand({ type: "next-episode" })).toEqual(["KeyN"]);
   });
 });

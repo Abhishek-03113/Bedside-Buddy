@@ -322,6 +322,18 @@ function mapToElectronKeyCode(keyCode: string): string {
     case "n":
     case "N":
       return "N";
+    case "KeyJ":
+    case "j":
+    case "J":
+      return "J";
+    case "KeyK":
+    case "k":
+    case "K":
+      return "K";
+    case "KeyL":
+    case "l":
+    case "L":
+      return "L";
     default:
       return keyCode.length === 1 ? keyCode.toUpperCase() : keyCode;
   }
