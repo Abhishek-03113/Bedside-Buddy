@@ -41,7 +41,7 @@ export function translateHotstarCommand(
           return ["ArrowRight"];
       }
       return null;
-    case "activate":
+    case "select":
       return ["Enter"];
     case "search":
       return null;

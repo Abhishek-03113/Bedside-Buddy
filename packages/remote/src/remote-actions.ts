@@ -8,8 +8,8 @@ export type RemoteDispatch =
 
 /**
  * Launcher: all D-pad / system keys go as nav (HomeScreen owns focus).
- * Player: Home/Back stay as nav (App returns to launcher); arrows/OK become
- * generic MediaSource commands so sources interpret browse/activate.
+ * Player: Home/Back stay as nav (App returns to launcher); arrows/SELECT become
+ * generic MediaSource commands so sources interpret browse/select.
  */
 export function resolveControlAction(
   mode: RemoteMode,
@@ -22,7 +22,7 @@ export function resolveControlAction(
     return { kind: "nav", action };
   }
   if (action === "select") {
-    return { kind: "command", command: { type: "activate" } };
+    return { kind: "command", command: { type: "select" } };
   }
   return {
     kind: "command",

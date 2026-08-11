@@ -11,7 +11,7 @@ export interface SourceCapabilities {
   supportsScroll: boolean;
   /** Generic text search via RemoteCommand.search. */
   supportsSearch: boolean;
-  /** D-pad focus movement + activate among media tiles. */
+  /** D-pad focus movement + select among media tiles. */
   supportsBrowseNavigate: boolean;
 }
 

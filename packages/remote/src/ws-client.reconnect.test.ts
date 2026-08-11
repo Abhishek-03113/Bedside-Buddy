@@ -137,12 +137,12 @@ describe("createWsClient reconnect", () => {
     );
     FakeWebSocket.instances[0]!.emit(
       "message",
-      JSON.stringify({ kind: "toast", message: "activate", ok: true }),
+      JSON.stringify({ kind: "toast", message: "select", ok: true }),
     );
 
     expect(contexts).toEqual([{ mode: "player", activeSourceId: "netflix" }]);
     expect(toasts).toEqual([
-      { kind: "toast", message: "activate", ok: true },
+      { kind: "toast", message: "select", ok: true },
     ]);
     client.close();
   });

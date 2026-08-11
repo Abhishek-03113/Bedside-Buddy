@@ -21,11 +21,11 @@ describe("translateNetflixCommand", () => {
     expect(translateNetflixCommand({ type: "next-episode" })).toEqual(["KeyN"]);
   });
 
-  it("maps browse navigate, activate, and scroll", () => {
+  it("maps browse navigate, select, and scroll", () => {
     expect(
       translateNetflixCommand({ type: "navigate", direction: "left" }),
     ).toEqual(["ArrowLeft"]);
-    expect(translateNetflixCommand({ type: "activate" })).toEqual(["Enter"]);
+    expect(translateNetflixCommand({ type: "select" })).toEqual(["Enter"]);
     expect(
       translateNetflixCommand({ type: "scroll", direction: "down" }),
     ).toEqual(["PageDown"]);

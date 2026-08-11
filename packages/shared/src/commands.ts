@@ -14,8 +14,8 @@ export type RemoteCommand =
   | { type: "scroll"; direction: "up" | "down" }
   /** Move focus among selectable media items on the active source. */
   | { type: "navigate"; direction: "up" | "down" | "left" | "right" }
-  /** Activate / open / play the currently focused media item. */
-  | { type: "activate" }
+  /** Open / play the currently focused media item (Enter/click in the source UI). */
+  | { type: "select" }
   /** Run a source search with the given query when the source supports it. */
   | { type: "search"; query: string };
 

@@ -48,14 +48,26 @@ describe("resolveControlAction", () => {
     });
   });
 
-  it("maps player D-pad to navigate / activate commands", () => {
+  it("maps player D-pad to navigate / select commands", () => {
     expect(resolveControlAction("player", "up")).toEqual({
       kind: "command",
       command: { type: "navigate", direction: "up" },
     });
+    expect(resolveControlAction("player", "down")).toEqual({
+      kind: "command",
+      command: { type: "navigate", direction: "down" },
+    });
+    expect(resolveControlAction("player", "left")).toEqual({
+      kind: "command",
+      command: { type: "navigate", direction: "left" },
+    });
+    expect(resolveControlAction("player", "right")).toEqual({
+      kind: "command",
+      command: { type: "navigate", direction: "right" },
+    });
     expect(resolveControlAction("player", "select")).toEqual({
       kind: "command",
-      command: { type: "activate" },
+      command: { type: "select" },
     });
   });
 });
@@ -63,9 +75,9 @@ describe("resolveControlAction", () => {
 describe("feedbackLabel", () => {
   it("keeps success messages intact and marks failures", () => {
     expect(feedbackLabel("scroll", true)).toBe("scroll");
-    expect(feedbackLabel("search", false)).toBe("search failed");
-    expect(feedbackLabel("search failed (unsupported)", false)).toBe(
-      "search failed (unsupported)",
+    expect(feedbackLabel("select", false)).toBe("select failed");
+    expect(feedbackLabel("select failed (unsupported)", false)).toBe(
+      "select failed (unsupported)",
     );
   });
 });
@@ -101,11 +113,11 @@ describe("useRemoteToast lifecycle", () => {
 
     show({ message: "nav:up", ok: true });
     expect(toast).toEqual({ message: "nav:up", ok: true });
-    show({ message: "activate", ok: true });
-    expect(toast).toEqual({ message: "activate", ok: true });
+    show({ message: "select", ok: true });
+    expect(toast).toEqual({ message: "select", ok: true });
 
     vi.advanceTimersByTime(TOAST_DISMISS_MS - 1);
-    expect(toast).toEqual({ message: "activate", ok: true });
+    expect(toast).toEqual({ message: "select", ok: true });
     vi.advanceTimersByTime(1);
     expect(toast).toBeNull();
   });

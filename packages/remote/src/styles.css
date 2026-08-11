@@ -234,8 +234,13 @@ input {
 .dpad__select {
   grid-area: select;
   background: var(--accent);
-  font-size: 1.05rem;
+  color: #0b0d10;
+  font-size: 0.92rem;
   font-weight: 800;
+  letter-spacing: 0.06em;
+  min-height: 4.75rem;
+  min-width: 4.75rem;
+  border: 2px solid #ff6b73;
 }
 .dpad__right {
   grid-area: right;
@@ -413,4 +418,75 @@ input {
   .remote__chip {
     min-height: 2.75rem;
   }
+}
+
+.remote__input-toggle {
+  display: flex;
+  background: var(--btn);
+  border-radius: 14px;
+  padding: 4px;
+  width: min(100%, 14rem);
+  margin-bottom: -0.2rem;
+}
+
+.remote__toggle-btn {
+  flex: 1;
+  background: transparent;
+  color: var(--muted);
+  border: none;
+  padding: 0.5rem 0;
+  border-radius: 10px;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.remote__toggle-btn--active {
+  background: #2a3340;
+  color: var(--fg);
+}
+
+.remote__keyboard-area {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  width: min(100%, 22rem);
+  margin-top: -0.1rem;
+}
+
+.keyboard-input {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.keyboard-input__field {
+  width: 100%;
+  min-height: 3.1rem;
+  border: 1px solid #2a3340;
+  border-radius: 14px;
+  background: var(--btn);
+  color: var(--fg);
+  padding: 0 0.9rem;
+  font-size: 1.05rem;
+  touch-action: manipulation;
+}
+
+.special-keys {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.55rem;
+}
+
+.special-keys__btn {
+  min-height: 2.8rem;
+  border: none;
+  border-radius: 12px;
+  background: var(--btn);
+  color: var(--fg);
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.special-keys__btn:active {
+  background: var(--btn-press);
 }

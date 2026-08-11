@@ -2,6 +2,9 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 import type { RemoteCommand, SourceCapabilities } from "@coosy/shared";
 import type { ConnectionStatus, WsClient } from "../ws-client";
 import { resolveControlAction } from "../remote-actions";
+import { TrackpadSurface } from "../components/TrackpadSurface";
+import { KeyboardInput } from "../components/KeyboardInput";
+import { SpecialKeys } from "../components/SpecialKeys";
 
 interface RemoteControlsProps {
   client: WsClient;
@@ -26,6 +29,7 @@ export function RemoteControls({
   onToast,
 }: RemoteControlsProps) {
   const [busy, setBusy] = useState(false);
+  const [inputMode, setInputMode] = useState<"dpad" | "trackpad">("dpad");
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const searchInputRef = useRef<HTMLInputElement | null>(null);
@@ -160,48 +164,79 @@ export function RemoteControls({
         </button>
       </section>
 
-      <div className="dpad" role="group" aria-label="D-pad">
+      <div className="remote__input-toggle">
         <button
           type="button"
-          className="dpad__btn dpad__up"
-          disabled={busy || (mediaEnabled && !browse)}
-          onClick={() => void press("up")}
+          className={`remote__toggle-btn ${inputMode === "dpad" ? "remote__toggle-btn--active" : ""}`}
+          onClick={() => setInputMode("dpad")}
         >
-          ▲
+          D-pad
         </button>
         <button
           type="button"
-          className="dpad__btn dpad__left"
-          disabled={busy || (mediaEnabled && !browse)}
-          onClick={() => void press("left")}
+          className={`remote__toggle-btn ${inputMode === "trackpad" ? "remote__toggle-btn--active" : ""}`}
+          onClick={() => setInputMode("trackpad")}
         >
-          ◀
-        </button>
-        <button
-          type="button"
-          className="dpad__btn dpad__select"
-          disabled={busy || (mediaEnabled && !browse)}
-          onClick={() => void press("select")}
-        >
-          OK
-        </button>
-        <button
-          type="button"
-          className="dpad__btn dpad__right"
-          disabled={busy || (mediaEnabled && !browse)}
-          onClick={() => void press("right")}
-        >
-          ▶
-        </button>
-        <button
-          type="button"
-          className="dpad__btn dpad__down"
-          disabled={busy || (mediaEnabled && !browse)}
-          onClick={() => void press("down")}
-        >
-          ▼
+          Trackpad
         </button>
       </div>
+
+      {inputMode === "dpad" ? (
+        <div className="dpad" role="group" aria-label="D-pad">
+          <button
+            type="button"
+            className="dpad__btn dpad__up"
+            disabled={busy || (mediaEnabled && !browse)}
+            onClick={() => void press("up")}
+          >
+            ▲
+          </button>
+          <button
+            type="button"
+            className="dpad__btn dpad__left"
+            disabled={busy || (mediaEnabled && !browse)}
+            onClick={() => void press("left")}
+          >
+            ◀
+          </button>
+          <button
+            type="button"
+            className="dpad__btn dpad__select"
+            disabled={busy || (mediaEnabled && !browse)}
+            onClick={() => void press("select")}
+            aria-label="Select"
+          >
+            SELECT
+          </button>
+          <button
+            type="button"
+            className="dpad__btn dpad__right"
+            disabled={busy || (mediaEnabled && !browse)}
+            onClick={() => void press("right")}
+          >
+            ▶
+          </button>
+          <button
+            type="button"
+            className="dpad__btn dpad__down"
+            disabled={busy || (mediaEnabled && !browse)}
+            onClick={() => void press("down")}
+          >
+            ▼
+          </button>
+        </div>
+      ) : (
+        <div style={{ width: "min(100%, 17.5rem)", height: "13rem", margin: "0.15rem 0", display: "flex" }}>
+          <TrackpadSurface client={client} status={status} onToast={onToast} />
+        </div>
+      )}
+
+      {inputMode === "trackpad" ? (
+        <div className="remote__keyboard-area">
+          <KeyboardInput client={client} status={status} onToast={onToast} />
+          <SpecialKeys client={client} onToast={onToast} />
+        </div>
+      ) : null}
 
       {mediaEnabled ? (
         <div className="remote__scroll" role="group" aria-label="Scroll page">
@@ -280,7 +315,7 @@ export function RemoteControls({
         role="status"
       >
         {toast?.message ??
-          (mediaEnabled ? "Media controls active" : "D-pad + OK on launcher")}
+          (mediaEnabled ? "Media controls active" : "D-pad + SELECT on launcher")}
       </div>
 
       {searchOpen ? (

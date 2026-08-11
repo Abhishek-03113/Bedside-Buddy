@@ -20,11 +20,11 @@ describe("translatePrimeCommand", () => {
     expect(translatePrimeCommand({ type: "next-episode" })).toBeNull();
   });
 
-  it("maps browse navigate, activate, and scroll", () => {
+  it("maps browse navigate, select, and scroll", () => {
     expect(
       translatePrimeCommand({ type: "navigate", direction: "right" }),
     ).toEqual(["ArrowRight"]);
-    expect(translatePrimeCommand({ type: "activate" })).toEqual(["Enter"]);
+    expect(translatePrimeCommand({ type: "select" })).toEqual(["Enter"]);
     expect(
       translatePrimeCommand({ type: "scroll", direction: "down" }),
     ).toEqual(["PageDown"]);

@@ -1,6 +1,6 @@
 import type { BrowserWindow, WebContentsView } from "electron";
 import { WebContentsView as ElectronWebContentsView } from "electron";
-import type { CommandResult, MediaSource } from "@coosy/shared";
+import type { CommandResult, InputCommand, MediaSource } from "@coosy/shared";
 import { SOURCES, listSources } from "./sources/registry.js";
 import { touchSource, setAppState, upsertPlayback } from "./db/db.js";
 import {
@@ -11,6 +11,11 @@ import {
   type Rect,
 } from "./viewport.js";
 import { perfInc } from "../shared/perf.js";
+import {
+  applyInputCommand,
+  createPointerCursorState,
+  type PointerCursorState,
+} from "./source-input.js";
 
 export type ContextMode = "launcher" | "player";
 
@@ -38,6 +43,8 @@ export class SourceHost {
   private boundInputSourceId: string | null = null;
   /** Last bounds successfully applied to the active view — skip identical setBounds. */
   private lastSyncedBounds: Rect | null = null;
+  /** View-local pointer cursor for phone trackpad (not the OS cursor). */
+  private pointerCursor: PointerCursorState = createPointerCursorState();
 
   constructor(window: BrowserWindow, events: SourceHostEvents) {
     this.window = window;
@@ -68,11 +75,28 @@ export class SourceHost {
     this.activeSourceId = null;
     this.boundInputSourceId = null;
     this.lastSyncedBounds = null;
+    this.pointerCursor = createPointerCursorState();
     this.setLauncherThrottling(false);
   }
 
   getActiveSourceId(): string | null {
     return this.activeSourceId;
+  }
+
+  /**
+   * Apply a generic pointer/keyboard command to the active source view.
+   * Rejects cleanly when the launcher is showing (no active MediaSource).
+   */
+  handleInput(command: InputCommand): CommandResult {
+    const view = this.getActiveView();
+    if (!this.activeSourceId || !view || view.webContents.isDestroyed()) {
+      return { ok: false, reason: "no-active-session" };
+    }
+    return applyInputCommand(
+      { window: this.window, view },
+      this.pointerCursor,
+      command,
+    );
   }
 
   getActiveSource(): MediaSource | null {
@@ -134,6 +158,7 @@ export class SourceHost {
     this.bindEscapeHook(sourceId, view);
     this.attachView(sourceId, view);
     this.activeSourceId = sourceId;
+    this.pointerCursor = createPointerCursorState();
     touchSource(sourceId);
     setAppState("last_active_source", sourceId);
     this.setLauncherThrottling(true);
@@ -184,6 +209,7 @@ export class SourceHost {
     // Keep view alive for resume — do not destroy (architecture §7 / PRD §6.1)
     this.activeSourceId = null;
     this.lastSyncedBounds = null;
+    this.pointerCursor = createPointerCursorState();
     setAppState("last_active_source", "");
     this.setLauncherThrottling(false);
     this.emitContext("launcher");

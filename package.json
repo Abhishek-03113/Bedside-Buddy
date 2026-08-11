@@ -17,5 +17,10 @@
   },
   "devDependencies": {
     "typescript": "^5.7.2"
+  },
+  "pnpm": {
+    "overrides": {
+      "node-gyp": "^10.2.0"
+    }
   }
 }

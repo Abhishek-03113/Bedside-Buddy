@@ -9,7 +9,7 @@ import type { RemoteCommand } from "@coosy/shared";
  * - Arrow seek/volume work when the player has keyboard focus; first command
  *   after load may need a prior click (trackpad mode — deferred).
  * - KeyN for next-episode is best-effort; Netflix sometimes uses UI-only.
- * - Browse navigate/activate/scroll use the same keys the web UI expects
+ * - Browse navigate/select/scroll use the same keys the web UI expects
  *   while browsing rows (site context decides seek vs focus).
  */
 export function translateNetflixCommand(
@@ -42,7 +42,7 @@ export function translateNetflixCommand(
           return ["ArrowRight"];
       }
       return null;
-    case "activate":
+    case "select":
       return ["Enter"];
     case "search":
       return null;

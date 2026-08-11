@@ -21,11 +21,11 @@ describe("translateHotstarCommand", () => {
     expect(translateHotstarCommand({ type: "next-episode" })).toBeNull();
   });
 
-  it("maps browse navigate / scroll and leaves search to URL helper", () => {
+  it("maps browse navigate / select / scroll and leaves search to URL helper", () => {
     expect(
       translateHotstarCommand({ type: "navigate", direction: "down" }),
     ).toEqual(["ArrowDown"]);
-    expect(translateHotstarCommand({ type: "activate" })).toEqual(["Enter"]);
+    expect(translateHotstarCommand({ type: "select" })).toEqual(["Enter"]);
     expect(
       translateHotstarCommand({ type: "scroll", direction: "up" }),
     ).toEqual(["PageUp"]);

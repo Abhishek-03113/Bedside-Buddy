@@ -1,4 +1,5 @@
 import type { CommandResult, RemoteCommand } from "./commands.js";
+import type { InputCommand } from "./input-commands.js";
 import type { SourceCapabilities } from "./media-source.js";
 
 /**
@@ -8,6 +9,8 @@ import type { SourceCapabilities } from "./media-source.js";
 
 export type WsClientMessage =
   | { kind: "command"; requestId: string; command: RemoteCommand }
+  /** Pointer / keyboard — routed to SourceHost, not MediaSource.handleCommand. */
+  | { kind: "input"; requestId: string; command: InputCommand }
   | { kind: "hello"; clientId: string; pairingCode?: string }
   | { kind: "nav"; requestId: string; action: NavAction };
 

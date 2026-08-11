@@ -33,9 +33,12 @@ vi.mock("./pairing.js", () => {
 });
 
 vi.mock("./sources/registry.js", () => {
-  const handleCommand = vi.fn(async (_command: RemoteCommand) => ({
-    ok: true as const,
-  }));
+  const handleCommand = vi.fn(async (command: RemoteCommand) => {
+    if (command.type === "next-episode") {
+      return { ok: false as const, reason: "unsupported" as const };
+    }
+    return { ok: true as const };
+  });
   const source = {
     id: "netflix",
     displayName: "Netflix",
@@ -266,6 +269,53 @@ describe("remote server foundation", () => {
       type: "search",
       query: "dark",
     });
+
+    ws.send(
+      JSON.stringify({
+        kind: "command",
+        requestId: "c-nav",
+        command: { type: "navigate", direction: "right" },
+      }),
+    );
+    await waitForMessage(
+      ws,
+      (m) => m.kind === "command-result" && m.requestId === "c-nav",
+    );
+    expect(__handleCommand).toHaveBeenCalledWith({
+      type: "navigate",
+      direction: "right",
+    });
+
+    ws.send(
+      JSON.stringify({
+        kind: "command",
+        requestId: "c-select",
+        command: { type: "select" },
+      }),
+    );
+    const selectResult = await waitForMessage(
+      ws,
+      (m) => m.kind === "command-result" && m.requestId === "c-select",
+    );
+    expect(selectResult.result).toEqual({ ok: true });
+    expect(__handleCommand).toHaveBeenCalledWith({ type: "select" });
+
+    ws.send(
+      JSON.stringify({
+        kind: "command",
+        requestId: "c-unsupported",
+        command: { type: "next-episode" },
+      }),
+    );
+    const unsupported = await waitForMessage(
+      ws,
+      (m) => m.kind === "command-result" && m.requestId === "c-unsupported",
+    );
+    expect(unsupported.result).toEqual({
+      ok: false,
+      reason: "unsupported",
+    });
+    expect(__handleCommand).toHaveBeenCalledWith({ type: "next-episode" });
 
     ws.send(
       JSON.stringify({

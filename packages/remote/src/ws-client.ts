@@ -1,5 +1,6 @@
 import type {
   CommandResult,
+  InputCommand,
   RemoteCommand,
   SourceCapabilities,
   WsClientMessage,
@@ -22,11 +23,19 @@ type ErrorHandler = (message: string) => void;
 type ToastHandler = (payload: { message: string; ok: boolean }) => void;
 
 /**
- * Source-agnostic WebSocket client — only sends RemoteCommand / nav.
+ * Source-agnostic WebSocket client — RemoteCommand / nav / pointer+keyboard input.
  */
 export interface WsClient {
   readonly status: ConnectionStatus;
   sendCommand(command: RemoteCommand): Promise<CommandResult>;
+  /**
+   * Send pointer/keyboard input. By default awaits acknowledgement.
+   * Use `awaitResult: false` for high-frequency pointer-move/scroll.
+   */
+  sendInput(
+    command: InputCommand,
+    opts?: { awaitResult?: boolean },
+  ): Promise<CommandResult>;
   sendNav(
     action: Extract<WsClientMessage, { kind: "nav" }>["action"],
   ): Promise<void>;
@@ -261,6 +270,27 @@ export function createWsClient(opts: CreateWsClientOptions | string): WsClient {
       return new Promise<CommandResult>((resolve, reject) => {
         pending.set(requestId, { resolve, reject });
         send({ kind: "command", requestId, command });
+      });
+    },
+    async sendInput(command, opts) {
+      if (socket.readyState !== WebSocketImpl.OPEN || status !== "CONNECTED") {
+        return { ok: false, reason: "no-active-session" };
+      }
+      const requestId = randomId();
+      const message: Extract<WsClientMessage, { kind: "input" }> = {
+        kind: "input",
+        requestId,
+        command,
+      };
+
+      if (opts?.awaitResult === false) {
+        send(message);
+        return { ok: true };
+      }
+
+      return new Promise<CommandResult>((resolve, reject) => {
+        pending.set(requestId, { resolve, reject });
+        send(message);
       });
     },
     async sendNav(action) {

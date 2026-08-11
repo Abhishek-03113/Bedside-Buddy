@@ -21,11 +21,11 @@ describe("translateYoutubeCommand", () => {
     expect(translateYoutubeCommand({ type: "next-episode" })).toBeNull();
   });
 
-  it("maps browse navigate, activate, and scroll", () => {
+  it("maps browse navigate, select, and scroll", () => {
     expect(
       translateYoutubeCommand({ type: "navigate", direction: "up" }),
     ).toEqual(["ArrowUp"]);
-    expect(translateYoutubeCommand({ type: "activate" })).toEqual(["Enter"]);
+    expect(translateYoutubeCommand({ type: "select" })).toEqual(["Enter"]);
     expect(
       translateYoutubeCommand({ type: "scroll", direction: "up" }),
     ).toEqual(["PageUp"]);

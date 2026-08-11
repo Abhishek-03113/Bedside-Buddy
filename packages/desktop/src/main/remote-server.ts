@@ -9,6 +9,7 @@ import type {
   WsClientMessage,
   WsServerMessage,
 } from "@coosy/shared";
+import { parseInputCommand } from "@coosy/shared";
 import { listSources, SOURCES } from "./sources/registry.js";
 import type { SourceHost } from "./source-host.js";
 import { authorizeHello } from "./pairing.js";
@@ -265,6 +266,55 @@ async function handleMessage(
     };
     deps.onToast(toast);
     broadcast({ kind: "toast", ...toast });
+    return;
+  }
+
+  if (message.kind === "input") {
+    const parsed = parseInputCommand(message.command);
+    if (!parsed) {
+      send(socket, {
+        kind: "command-result",
+        requestId: message.requestId,
+        result: { ok: false, reason: "unknown" },
+      });
+      send(socket, {
+        kind: "error",
+        requestId: message.requestId,
+        message: "invalid input command",
+      });
+      return;
+    }
+
+    const host = deps.getSourceHost();
+    if (!host?.getActiveSourceId()) {
+      send(socket, {
+        kind: "command-result",
+        requestId: message.requestId,
+        result: { ok: false, reason: "no-active-session" },
+      });
+      return;
+    }
+
+    const result = host.handleInput(parsed);
+    send(socket, {
+      kind: "command-result",
+      requestId: message.requestId,
+      result,
+    });
+    // Avoid toast spam for high-frequency pointer moves / scroll.
+    if (
+      parsed.type !== "pointer-move" &&
+      parsed.type !== "pointer-scroll" &&
+      parsed.type !== "pointer-down" &&
+      parsed.type !== "pointer-up"
+    ) {
+      const toast = {
+        message: result.ok ? parsed.type : `${parsed.type} failed`,
+        ok: result.ok,
+      };
+      deps.onToast(toast);
+      broadcast({ kind: "toast", ...toast });
+    }
     return;
   }
 
