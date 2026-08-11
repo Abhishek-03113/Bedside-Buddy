@@ -2,6 +2,10 @@
 
 Track progress against the PRD and architecture. Update this file as work lands.
 
+> **Repo scope:** only `packages/shared` and `packages/desktop`. Phone remote (`packages/remote`) is out of scope in this repository — see [`docs/notes.md`](docs/notes.md).
+>
+> **Detailed POC checklist:** [`tasks-desktop-poc.md`](tasks-desktop-poc.md)
+
 ## Legend
 
 - `[ ]` pending
@@ -25,48 +29,53 @@ Track progress against the PRD and architecture. Update this file as work lands.
 
 ## Phase 1 — Blocking spikes & decisions
 
-- [ ] Widevine / DRM spike in Electron (castlabs or component) — **go/no-go**
-- [ ] Confirm OS target (macOS / Windows / Linux / both)
-- [ ] Pairing UX: zero-setup IP vs one-time PWA install
-- [ ] Confirm Continue Watching stays out of v1 (architecture §4)
+- [x] Widevine / DRM spike in Electron (castlabs ECS `v42.8.0+wvcus`) — **GO** (see `docs/widevine-spike.md`); HD playback still manual
+- [x] Confirm OS target (macOS first)
+- [x] Pairing UX: one-time code on TV + WS hello (PWA install deferred with remote package)
+- [x] Confirm Continue Watching stays out of v1 (architecture §4)
 
 ## Phase 2 — Desktop shell (infra)
 
-- [ ] Electron window bootstrap (fullscreen launcher)
-- [ ] `source-host.ts` — WebContentsView lifecycle + session partitions
-- [ ] SQLite schema + `db.ts` (sources, app_state)
-- [ ] `ws-server.ts` — source-agnostic WebSocket command dispatch
-- [ ] `discovery.ts` — mDNS/Bonjour + QR/IP fallback
-- [ ] Preload `contextBridge` IPC surface
-- [ ] Serve remote PWA from local HTTP server
+- [x] Electron window bootstrap (fullscreen launcher)
+- [x] `source-host.ts` — WebContentsView lifecycle + session partitions + key input
+- [x] SQLite schema + `db.ts` (sources, app_state) — better-sqlite3@13 for Electron 42
+- [x] `ws-server.ts` — source-agnostic WebSocket command dispatch + pairing
+- [x] `discovery.ts` — mDNS/Bonjour + IP/pairing shown on home
+- [x] Preload `contextBridge` IPC surface
+- [-] Serve remote PWA from local HTTP server (remote out of scope; use `ws-smoke.mjs`)
 
 ## Phase 3 — Shared protocol & Netflix source
 
-- [ ] Finalize `@coosy/shared` types against real wire messages
-- [ ] `NetflixSource` + `netflix-commands.ts` (key-event translation)
-- [ ] Register Netflix in `sources/registry.ts`
-- [ ] Honest `CommandResult` → TV toast + phone feedback
+- [x] Finalize `@coosy/shared` types (`SourceInput` / `bindInput`)
+- [x] `NetflixSource` + `netflix-commands.ts` (key-event translation)
+- [x] Register Netflix in `sources/registry.ts`
+- [x] Honest `CommandResult` → TV toast + phone feedback
 
 ## Phase 4 — TV launcher UI (renderer)
 
-- [ ] HomeScreen — source tiles from registry metadata
-- [ ] LoadingScreen
-- [ ] PlayerOverlay + remote toast
-- [ ] ContinueCard gated on `supportsNowPlayingMetadata` (no fake data)
-- [ ] D-pad / keyboard-navigable focus model
+- [x] HomeScreen — source tiles from registry metadata + pairing footer
+- [x] LoadingScreen
+- [x] PlayerOverlay + remote toast
+- [x] ContinueCard gated on `supportsNowPlayingMetadata` (no fake data)
+- [x] D-pad / keyboard-navigable focus model
 
 ## Phase 5 — Phone remote (PWA)
 
-- [ ] DPadScreen (navigate launcher)
-- [ ] TransportScreen (buttons from `SourceCapabilities`)
-- [ ] `ws-client.ts` — generic `RemoteCommand` only
-- [ ] Pairing / reconnect UI
-- [ ] PWA manifest + service worker shell
+**Out of scope in this repo** (see [`docs/notes.md`](docs/notes.md)).
+
+- [-] DPadScreen (navigate launcher)
+- [-] TransportScreen (buttons from `SourceCapabilities`)
+- [-] `ws-client.ts` — generic `RemoteCommand` only
+- [-] Pairing / reconnect UI
+- [-] PWA manifest + service worker shell
 
 ## Phase 6 — v1 success criteria
 
-- [ ] Launch Netflix into fullscreen from phone
-- [ ] Play / pause / seek ±10s / return home from phone only
+Desktop-side criteria only in this repo; full phone-driven bar depends on remote work elsewhere.
+
+- [x] Shell boots with Widevine CDM + WS + pairing code
+- [ ] Launch Netflix into fullscreen (manual)
+- [ ] Play / pause / seek ±10s / return home (command path through desktop — manual with `ws-smoke`)
 - [ ] Session persistence across restarts (partition)
 - [ ] Source switch keeps previous view alive (paused, not destroyed)
 
