@@ -57,13 +57,23 @@ body,
   color: var(--fg);
   font-size: 1.25rem;
   cursor: pointer;
+  transition: transform 120ms ease, box-shadow 120ms ease, border-color 120ms ease;
 }
 
+.source-tile:focus,
 .source-tile:focus-visible,
 .source-tile--focused {
   outline: none;
   border-color: var(--accent);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 45%, transparent);
+  box-shadow:
+    0 0 0 4px color-mix(in srgb, var(--accent) 55%, transparent),
+    0 0 24px color-mix(in srgb, var(--accent) 35%, transparent);
+  transform: scale(1.03);
+}
+
+.source-tile__label {
+  font-weight: 600;
+  letter-spacing: 0.02em;
 }
 
 .home__error {

@@ -1,18 +1,31 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { NavAction } from "@coosy/shared";
 import { SourceTile } from "../components/SourceTile";
 import { ContinueCard } from "../components/ContinueCard";
 import type { ConnectionInfo, SourceListItem } from "../coosy-api";
+import {
+  clampFocusIndex,
+  columnCountFromTemplate,
+  moveFocusIndex,
+  resolveInitialFocusIndex,
+} from "../launcher-focus";
 
 interface HomeScreenProps {
   onSelectSource: (id: string) => void;
+  /** Restore focus after returning from a media source, when possible. */
+  initialFocusSourceId?: string | null;
 }
 
-export function HomeScreen({ onSelectSource }: HomeScreenProps) {
+export function HomeScreen({
+  onSelectSource,
+  initialFocusSourceId = null,
+}: HomeScreenProps) {
   const [sources, setSources] = useState<SourceListItem[]>([]);
   const [focusIndex, setFocusIndex] = useState(0);
   const [connection, setConnection] = useState<ConnectionInfo | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const gridRef = useRef<HTMLElement | null>(null);
+  const columnsRef = useRef(1);
 
   useEffect(() => {
     let cancelled = false;
@@ -25,7 +38,12 @@ export function HomeScreen({ onSelectSource }: HomeScreenProps) {
         if (cancelled) return;
         setSources(list);
         setConnection(info);
-        setFocusIndex(0);
+        setFocusIndex(
+          resolveInitialFocusIndex(
+            list.map((s) => s.id),
+            initialFocusSourceId,
+          ),
+        );
       } catch (err) {
         if (!cancelled) {
           setLoadError(err instanceof Error ? err.message : "Failed to load");
@@ -35,9 +53,29 @@ export function HomeScreen({ onSelectSource }: HomeScreenProps) {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [initialFocusSourceId]);
 
-  const selectFocused = useCallback(() => {
+  useEffect(() => {
+    setFocusIndex((current) => clampFocusIndex(current, sources.length));
+  }, [sources.length]);
+
+  useEffect(() => {
+    const grid = gridRef.current;
+    if (!grid) return;
+
+    const measure = () => {
+      columnsRef.current = columnCountFromTemplate(
+        getComputedStyle(grid).gridTemplateColumns,
+      );
+    };
+    measure();
+
+    const observer = new ResizeObserver(measure);
+    observer.observe(grid);
+    return () => observer.disconnect();
+  }, [sources.length]);
+
+  const activateFocusedSource = useCallback(() => {
     const source = sources[focusIndex];
     if (source) onSelectSource(source.id);
   }, [focusIndex, onSelectSource, sources]);
@@ -46,34 +84,16 @@ export function HomeScreen({ onSelectSource }: HomeScreenProps) {
     (action: NavAction) => {
       if (sources.length === 0) return;
       if (action === "select") {
-        selectFocused();
+        activateFocusedSource();
         return;
       }
       if (action === "home" || action === "back") return;
 
-      setFocusIndex((current) => {
-        const cols = Math.max(
-          1,
-          Math.floor(
-            (typeof window !== "undefined" ? window.innerWidth * 0.9 : 800) /
-              180,
-          ),
-        );
-        switch (action) {
-          case "left":
-            return (current - 1 + sources.length) % sources.length;
-          case "right":
-            return (current + 1) % sources.length;
-          case "up":
-            return (current - cols + sources.length) % sources.length;
-          case "down":
-            return (current + cols) % sources.length;
-          default:
-            return current;
-        }
-      });
+      setFocusIndex((current) =>
+        moveFocusIndex(current, action, sources.length, columnsRef.current),
+      );
     },
-    [selectFocused, sources.length],
+    [activateFocusedSource, sources.length],
   );
 
   useEffect(() => {
@@ -88,6 +108,7 @@ export function HomeScreen({ onSelectSource }: HomeScreenProps) {
       };
       const action = map[event.key];
       if (!action) return;
+      // Prevent Space from scrolling the launcher when activating a tile.
       event.preventDefault();
       applyNav(action);
     };
@@ -125,7 +146,11 @@ export function HomeScreen({ onSelectSource }: HomeScreenProps) {
 
       {loadError ? <p className="home__error">{loadError}</p> : null}
 
-      <section className="home__sources" aria-label="Sources">
+      <section
+        ref={gridRef}
+        className="home__sources"
+        aria-label="Sources"
+      >
         {sources.map((source, index) => (
           <SourceTile
             key={source.id}
@@ -135,6 +160,7 @@ export function HomeScreen({ onSelectSource }: HomeScreenProps) {
             focused={index === focusIndex}
             index={index}
             onSelect={() => onSelectSource(source.id)}
+            onFocusRequest={() => setFocusIndex(index)}
           />
         ))}
       </section>

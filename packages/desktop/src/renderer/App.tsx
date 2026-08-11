@@ -11,11 +11,18 @@ type Screen = "home" | "player";
  * 2. Active source — native WebContentsView (main process); this renderer stays empty
  * 3. Temporary overlays — toast window in main while source is active
  *
- * No CoOSy "Loading…" gate — showSource attaches immediately; Netflix paints its own load.
+ * Keyboard context:
+ * - HomeScreen owns tile nav + Enter/Space activation while launcher is shown.
+ * - While a source WebContentsView is active, media keys are not intercepted here;
+ *   Cmd/Ctrl+Escape → home is handled in SourceHost.
  */
 export function App() {
   const [screen, setScreen] = useState<Screen>("home");
   const [activeSourceId, setActiveSourceId] = useState<string | null>(null);
+  /** Last launched / focused source — restored when returning Home. */
+  const [lastFocusedSourceId, setLastFocusedSourceId] = useState<string | null>(
+    null,
+  );
 
   const goHome = () => {
     setScreen("home");
@@ -33,6 +40,7 @@ export function App() {
         return;
       }
       if (mode === "player" && id) {
+        setLastFocusedSourceId(id);
         setActiveSourceId(id);
         setScreen("player");
       }
@@ -52,7 +60,9 @@ export function App() {
 
   return (
     <HomeScreen
+      initialFocusSourceId={lastFocusedSourceId}
       onSelectSource={(id) => {
+        setLastFocusedSourceId(id);
         setActiveSourceId(id);
         setScreen("player");
         void window.coosy?.openSource(id).catch(() => {
