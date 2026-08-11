@@ -2,8 +2,33 @@ import Database from "better-sqlite3";
 import { app } from "electron";
 import { join } from "node:path";
 import { SCHEMA_SQL } from "./schema.js";
+import type { PlaybackHistoryItem } from "@coosy/shared";
 
 let db: Database.Database | null = null;
+
+type PlaybackHistoryRow = {
+  id: number;
+  source_id: string;
+  content_url: string;
+  title: string | null;
+  artwork_url: string | null;
+  last_played_at: number;
+  position_seconds: number | null;
+  duration_seconds: number | null;
+};
+
+function toPlaybackHistoryItem(row: PlaybackHistoryRow): PlaybackHistoryItem {
+  return {
+    id: row.id,
+    sourceId: row.source_id,
+    contentUrl: row.content_url,
+    ...(row.title ? { title: row.title } : {}),
+    ...(row.artwork_url ? { artworkUrl: row.artwork_url } : {}),
+    lastPlayedAt: row.last_played_at,
+    ...(row.position_seconds != null ? { positionSeconds: row.position_seconds } : {}),
+    ...(row.duration_seconds != null ? { durationSeconds: row.duration_seconds } : {}),
+  };
+}
 
 export function initDb(): Database.Database {
   if (db) return db;
@@ -47,4 +72,40 @@ export function touchSource(id: string): void {
        ON CONFLICT(id) DO UPDATE SET last_used_at = excluded.last_used_at`,
     )
     .run(id, Date.now());
+}
+
+/** One current item per source: later playback replaces the earlier source row. */
+export function upsertPlayback(item: Omit<PlaybackHistoryItem, "id" | "lastPlayedAt">): void {
+  getDb()
+    .prepare(
+      `INSERT INTO playback_history
+        (source_id, content_url, title, artwork_url, last_played_at, position_seconds, duration_seconds)
+       VALUES (?, ?, ?, ?, ?, ?, ?)
+       ON CONFLICT(source_id) DO UPDATE SET
+         content_url = excluded.content_url,
+         title = excluded.title,
+         artwork_url = excluded.artwork_url,
+         last_played_at = excluded.last_played_at,
+         position_seconds = excluded.position_seconds,
+         duration_seconds = excluded.duration_seconds`,
+    )
+    .run(
+      item.sourceId,
+      item.contentUrl,
+      item.title ?? null,
+      item.artworkUrl ?? null,
+      Date.now(),
+      item.positionSeconds ?? null,
+      item.durationSeconds ?? null,
+    );
+}
+
+export function getRecentPlayback(limit: number): PlaybackHistoryItem[] {
+  return (getDb()
+    .prepare("SELECT * FROM playback_history ORDER BY last_played_at DESC LIMIT ?")
+    .all(limit) as PlaybackHistoryRow[]).map(toPlaybackHistoryItem);
+}
+
+export function removePlayback(id: number): void {
+  getDb().prepare("DELETE FROM playback_history WHERE id = ?").run(id);
 }
