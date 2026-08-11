@@ -12,6 +12,7 @@
     "clean": "rm -rf out dist release",
     "rebuild-native": "electron-builder install-app-deps",
     "ws-smoke": "node ./scripts/ws-smoke.mjs",
+    "assets:logos": "node ./scripts/fetch-source-logos.mjs",
     "test": "vitest run"
   },
   "dependencies": {

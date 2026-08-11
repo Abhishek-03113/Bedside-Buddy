@@ -38,9 +38,7 @@ export const SourceTile = memo(function SourceTile({
       onClick={() => onSelect(id)}
       onFocus={() => onFocusRequest?.(index)}
     >
-      <span className={`source-tile__icon source-tile__icon--${id}`} aria-hidden="true">
-        {id === "netflix" ? "N" : id === "prime" ? "▰" : id === "youtube" ? "▶" : "H"}
-      </span>
+      <img className={`source-tile__icon source-tile__icon--${id}`} src={icon.src} alt="" />
       <span className="source-tile__label">{displayName}</span>
       <span className="source-tile__hint">Browse</span>
     </button>
