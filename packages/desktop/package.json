@@ -11,7 +11,8 @@
     "typecheck": "tsc -p tsconfig.node.json --noEmit && tsc -p tsconfig.web.json --noEmit",
     "clean": "rm -rf out dist release",
     "rebuild-native": "electron-builder install-app-deps",
-    "ws-smoke": "node ./scripts/ws-smoke.mjs"
+    "ws-smoke": "node ./scripts/ws-smoke.mjs",
+    "test": "vitest run"
   },
   "dependencies": {
     "@coosy/shared": "workspace:*",
@@ -32,6 +33,7 @@
     "electron-builder": "^25.1.8",
     "electron-vite": "^2.3.0",
     "typescript": "^5.7.2",
-    "vite": "^5.4.11"
+    "vite": "^5.4.11",
+    "vitest": "^2.1.9"
   }
 }
