@@ -20,6 +20,12 @@ export type NavAction =
   | "back"
   | "home";
 
+/** Minimal source list for the phone remote chrome — not a full catalog payload. */
+export interface RemoteSourceSummary {
+  id: string;
+  displayName: string;
+}
+
 export type WsServerMessage =
   | {
       kind: "command-result";
@@ -31,12 +37,15 @@ export type WsServerMessage =
       sessionId: string;
       activeSourceId: string | null;
       capabilities: SourceCapabilities | null;
+      mode: "launcher" | "player";
+      sources: RemoteSourceSummary[];
     }
   | {
       kind: "context";
       mode: "launcher" | "player";
       activeSourceId: string | null;
       capabilities: SourceCapabilities | null;
+      sources: RemoteSourceSummary[];
     }
   | {
       kind: "toast";

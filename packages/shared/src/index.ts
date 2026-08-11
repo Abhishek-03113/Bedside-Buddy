@@ -19,4 +19,5 @@ export type {
   WsClientMessage,
   WsServerMessage,
   NavAction,
+  RemoteSourceSummary,
 } from "./ws-protocol.js";
