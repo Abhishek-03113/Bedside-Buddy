@@ -30,6 +30,8 @@ export function getAppState(key: string): string | null {
 }
 
 export function setAppState(key: string, value: string): void {
+  const current = getAppState(key);
+  if (current === value) return;
   getDb()
     .prepare(
       `INSERT INTO app_state (key, value) VALUES (?, ?)

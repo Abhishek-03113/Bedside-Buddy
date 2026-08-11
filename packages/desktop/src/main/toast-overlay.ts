@@ -1,13 +1,18 @@
 import { BrowserWindow } from "electron";
+import { perfInc } from "../shared/perf.js";
 
 /**
  * Temporary toast surface above an active source WebContentsView.
  * Does not reserve permanent layout space in the source viewport.
+ *
+ * Lifecycle: create overlay once → reuse → update content → show → hide.
  */
 export class ToastOverlay {
   private window: BrowserWindow | null = null;
   private hideTimer: ReturnType<typeof setTimeout> | null = null;
   private parent: BrowserWindow | null = null;
+  private lastBounds: { x: number; y: number; width: number; height: number } | null =
+    null;
 
   attach(parent: BrowserWindow): void {
     this.parent = parent;
@@ -17,6 +22,7 @@ export class ToastOverlay {
     const parent = this.parent;
     if (!parent || parent.isDestroyed()) return;
 
+    perfInc("toast.show");
     this.ensureWindow(parent);
     const win = this.window;
     if (!win || win.isDestroyed()) return;
@@ -48,6 +54,7 @@ export class ToastOverlay {
     }
     this.window = null;
     this.parent = null;
+    this.lastBounds = null;
   }
 
   private ensureWindow(parent: BrowserWindow): void {
@@ -86,7 +93,19 @@ export class ToastOverlay {
     const height = 64;
     const x = Math.round(bounds.x + (bounds.width - width) / 2);
     const y = Math.round(bounds.y + bounds.height - height - 28);
-    win.setBounds({ x, y, width, height });
+    const next = { x, y, width, height };
+    const prev = this.lastBounds;
+    if (
+      prev &&
+      prev.x === next.x &&
+      prev.y === next.y &&
+      prev.width === next.width &&
+      prev.height === next.height
+    ) {
+      return;
+    }
+    win.setBounds(next);
+    this.lastBounds = next;
   }
 }
 
