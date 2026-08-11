@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { NavAction } from "@coosy/shared";
+import type { NavAction, PlaybackHistoryItem } from "@coosy/shared";
 import { SourceTile } from "../components/SourceTile";
 import { ContinueCard } from "../components/ContinueCard";
 import type { ConnectionInfo, SourceListItem } from "../coosy-api";
@@ -14,6 +14,8 @@ import {
   getCachedLauncherBootstrap,
   loadLauncherBootstrap,
 } from "../launcher-bootstrap";
+import { getCachedPlaybackHistory, refreshPlaybackHistory } from "../playback-history";
+import { toContinueItems } from "../continue-items";
 
 /** Stable key → nav map — allocated once, not per keydown. */
 const KEY_TO_NAV: Record<string, NavAction> = {
@@ -27,6 +29,7 @@ const KEY_TO_NAV: Record<string, NavAction> = {
 
 interface HomeScreenProps {
   onSelectSource: (id: string) => void;
+  onResumePlaybackHistory: (item: PlaybackHistoryItem) => void;
   /** Restore focus after returning from a media source, when possible. */
   initialFocusSourceId?: string | null;
 }
@@ -38,6 +41,7 @@ interface HomeScreenProps {
  */
 export function HomeScreen({
   onSelectSource,
+  onResumePlaybackHistory,
   initialFocusSourceId = null,
 }: HomeScreenProps) {
   perfInc("homeScreen.render");
@@ -56,6 +60,7 @@ export function HomeScreen({
     () => cached?.connection ?? null,
   );
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [continueWatching, setContinueWatching] = useState(getCachedPlaybackHistory);
   const gridRef = useRef<HTMLElement | null>(null);
   const columnsRef = useRef(1);
   const focusIndexRef = useRef(focusIndex);
@@ -96,6 +101,19 @@ export function HomeScreen({
     };
     // Mount-only bootstrap — preferred focus is applied from initial state / this load.
     // eslint-disable-next-line react-hooks/exhaustive-deps -- mount-only bootstrap
+  }, []);
+
+  // Home remains usable while this best-effort source-page request runs.
+  useEffect(() => {
+    let cancelled = false;
+    void refreshPlaybackHistory()
+      .then((items) => {
+        if (!cancelled) setContinueWatching(items);
+      })
+      .catch((error) => console.warn("[launcher] playback history unavailable", error));
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {
@@ -149,6 +167,10 @@ export function HomeScreen({
   const handleSelect = useCallback((id: string) => {
     onSelectSourceRef.current(id);
   }, []);
+
+  const handleResume = useCallback((item: PlaybackHistoryItem) => {
+    onResumePlaybackHistory(item);
+  }, [onResumePlaybackHistory]);
 
   const handleFocusRequest = useCallback((index: number) => {
     setFocusIndex((current) => (current === index ? current : index));
@@ -213,7 +235,10 @@ export function HomeScreen({
         <span className="home__settings" aria-hidden="true">⚙</span>
       </header>
 
-      <ContinueCard items={[]} onSelect={handleSelect} />
+      <ContinueCard
+        items={toContinueItems(continueWatching, sources)}
+        onSelect={handleResume}
+      />
 
       {loadError ? <p className="home__error">{loadError}</p> : null}
 

@@ -1,14 +1,14 @@
-interface ContinueItem {
-  title: string;
-  subtitle?: string;
-  sourceId: string;
+import type { PlaybackHistoryItem } from "@coosy/shared";
+
+export interface ContinueItem extends PlaybackHistoryItem {
   sourceName: string;
-  artworkClass: string;
+  sourceIcon: string;
+  title: string;
 }
 
 interface ContinueCardProps {
   items: ContinueItem[];
-  onSelect?: (sourceId: string) => void;
+  onSelect?: (item: ContinueItem) => void;
 }
 
 /**
@@ -25,17 +25,22 @@ export function ContinueCard({ items, onSelect }: ContinueCardProps) {
       </div>
       <ul className="continue__grid">
         {items.map((item) => (
-          <li key={`${item.sourceId}-${item.title}`}>
+          <li key={`${item.sourceId}-${item.contentUrl}`}>
             <button
               type="button"
-              className={`continue-card ${item.artworkClass}`}
-              onClick={() => onSelect?.(item.sourceId)}
+              className="continue-card"
+              onClick={() => onSelect?.(item)}
             >
-              <span className="continue-card__art" aria-hidden="true" />
+              {item.artworkUrl ? (
+                <span className="continue-card__art" aria-hidden="true" style={{ backgroundImage: `url("${item.artworkUrl}")` }} />
+              ) : (
+                <span className="continue-card__art continue-card__art--logo" aria-hidden="true">
+                  <img src={item.sourceIcon} alt="" />
+                </span>
+              )}
               <span className="continue-card__details">
                 <small>{item.sourceName}</small>
                 <strong>{item.title}</strong>
-                {item.subtitle ? <span>{item.subtitle}</span> : null}
               </span>
             </button>
           </li>

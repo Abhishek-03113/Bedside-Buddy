@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import type { NavAction } from "@coosy/shared";
+import type { NavAction, PlaybackHistoryItem } from "@coosy/shared";
 import { HomeScreen } from "./screens/HomeScreen";
 import { PlayerOverlay } from "./screens/PlayerOverlay";
 
@@ -61,6 +61,16 @@ export function App() {
   return (
     <HomeScreen
       initialFocusSourceId={lastFocusedSourceId}
+      onResumePlaybackHistory={(item: PlaybackHistoryItem) => {
+        setLastFocusedSourceId(item.sourceId);
+        setActiveSourceId(item.sourceId);
+        setScreen("player");
+        void window.coosy?.resumePlaybackHistory(item).catch((error) => {
+          console.warn("[launcher] saved playback URL could not be opened", error);
+          setActiveSourceId(null);
+          setScreen("home");
+        });
+      }}
       onSelectSource={(id) => {
         setLastFocusedSourceId(id);
         setActiveSourceId(id);
