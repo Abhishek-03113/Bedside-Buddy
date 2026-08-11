@@ -1,11 +1,15 @@
 :root {
   color-scheme: dark;
-  --bg: #0a0a0a;
+  --bg: #0b0d10;
   --fg: #f2f2f2;
-  --muted: #9a9a9a;
-  --btn: #1f1f1f;
+  --muted: #9aa3b2;
+  --btn: #1c222c;
+  --btn-press: #2a3340;
   --accent: #e50914;
-  font-family: "Segoe UI", system-ui, sans-serif;
+  --ok: #3ecf8e;
+  --warn: #f0b429;
+  --err: #f87171;
+  font-family: "SF Pro Display", "Segoe UI", system-ui, sans-serif;
 }
 
 * {
@@ -18,13 +22,20 @@ body,
 #root {
   margin: 0;
   min-height: 100%;
-  background: var(--bg);
+  background: radial-gradient(120% 80% at 50% 0%, #171b22 0%, var(--bg) 55%);
   color: var(--fg);
+}
+
+button,
+input {
+  font: inherit;
+  touch-action: manipulation;
 }
 
 .remote {
   min-height: 100dvh;
-  padding: 1.5rem;
+  padding: max(1rem, env(safe-area-inset-top)) 1.25rem
+    max(1.25rem, env(safe-area-inset-bottom));
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -34,27 +45,128 @@ body,
 
 .remote--status {
   justify-content: center;
+  text-align: center;
+}
+
+.remote__header {
+  width: min(100%, 360px);
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
 }
 
 .remote__title {
   margin: 0;
-  font-size: 1.75rem;
+  font-size: 1.6rem;
+  letter-spacing: -0.04em;
+}
+
+.remote__status {
+  margin: 0;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+
+.remote__status--connected {
+  color: var(--ok);
+}
+.remote__status--connecting {
+  color: var(--warn);
+}
+.remote__status--disconnected {
+  color: var(--err);
+}
+
+.remote__source {
+  margin: 0;
+  width: min(100%, 360px);
+  text-align: center;
+  font-size: 1.05rem;
+  color: var(--fg);
 }
 
 .remote__hint {
   margin: 0;
   color: var(--muted);
+  font-size: 0.9rem;
+  text-align: center;
 }
 
-.remote__secondary {
-  margin-top: auto;
-  width: min(100%, 280px);
-  padding: 1rem;
+.remote__error {
+  margin: 0;
+  color: var(--err);
+  font-size: 0.9rem;
+}
+
+.remote__feedback {
+  margin: 0;
+  min-height: 1.25rem;
+  color: var(--muted);
+  font-size: 0.85rem;
+  text-align: center;
+}
+
+.remote__pair {
+  display: flex;
+  gap: 0.75rem;
+  width: min(100%, 320px);
+}
+
+.remote__pair input {
+  flex: 1;
+  min-height: 3.25rem;
+  border: 1px solid #2a3340;
+  border-radius: 14px;
+  background: var(--btn);
+  color: var(--fg);
+  text-align: center;
+  letter-spacing: 0.35em;
+  font-size: 1.35rem;
+}
+
+.remote__pair button {
+  min-width: 5.5rem;
+  min-height: 3.25rem;
   border: none;
-  border-radius: 12px;
+  border-radius: 14px;
+  background: var(--accent);
+  color: #fff;
+  font-weight: 700;
+}
+
+.remote__pair button:disabled {
+  opacity: 0.4;
+}
+
+.remote__row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+  width: min(100%, 320px);
+}
+
+.remote__chip {
+  min-height: 3.25rem;
+  border: none;
+  border-radius: 14px;
   background: var(--btn);
   color: var(--fg);
   font-size: 1rem;
+  font-weight: 600;
+}
+
+.remote__chip--accent {
+  background: #2a1012;
+  color: #ffb4b8;
+  border: 1px solid #5c1a20;
+}
+
+.remote__chip:active,
+.dpad__btn:active,
+.transport button:active {
+  background: var(--btn-press);
 }
 
 .dpad {
@@ -63,17 +175,18 @@ body,
     ". up ."
     "left select right"
     ". down .";
-  gap: 0.75rem;
-  width: min(100%, 280px);
+  gap: 0.7rem;
+  width: min(100%, 320px);
 }
 
 .dpad__btn {
+  min-height: 4.5rem;
   aspect-ratio: 1;
   border: none;
-  border-radius: 16px;
+  border-radius: 22px;
   background: var(--btn);
   color: var(--fg);
-  font-size: 1.25rem;
+  font-size: 1.45rem;
 }
 
 .dpad__up {
@@ -85,6 +198,8 @@ body,
 .dpad__select {
   grid-area: select;
   background: var(--accent);
+  font-size: 1.1rem;
+  font-weight: 800;
 }
 .dpad__right {
   grid-area: right;
@@ -96,17 +211,19 @@ body,
 .transport {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 0.75rem;
+  gap: 0.7rem;
   width: min(100%, 360px);
 }
 
 .transport button {
-  padding: 1.1rem 0.75rem;
+  min-height: 3.4rem;
+  padding: 0.9rem 0.75rem;
   border: none;
-  border-radius: 12px;
+  border-radius: 14px;
   background: var(--btn);
   color: var(--fg);
   font-size: 1rem;
+  font-weight: 600;
 }
 
 .transport button:disabled {
@@ -115,5 +232,7 @@ body,
 
 .transport button:first-child {
   grid-column: 1 / -1;
-  background: var(--accent);
+  background: #1f2a22;
+  color: #b8f0d0;
+  border: 1px solid #2f4a3a;
 }
