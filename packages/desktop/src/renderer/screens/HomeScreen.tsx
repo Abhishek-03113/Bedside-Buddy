@@ -9,6 +9,21 @@ import {
   moveFocusIndex,
   resolveInitialFocusIndex,
 } from "../launcher-focus";
+import { perfInc } from "../../shared/perf";
+import {
+  getCachedLauncherBootstrap,
+  loadLauncherBootstrap,
+} from "../launcher-bootstrap";
+
+/** Stable key → nav map — allocated once, not per keydown. */
+const KEY_TO_NAV: Record<string, NavAction> = {
+  ArrowUp: "up",
+  ArrowDown: "down",
+  ArrowLeft: "left",
+  ArrowRight: "right",
+  Enter: "select",
+  " ": "select",
+};
 
 interface HomeScreenProps {
   onSelectSource: (id: string) => void;
@@ -16,28 +31,54 @@ interface HomeScreenProps {
   initialFocusSourceId?: string | null;
 }
 
+/**
+ * Keyboard / remote nav → focus index only.
+ * Listeners are registered once (refs hold latest sources/focus/callbacks)
+ * so arrow keys do not tear down and re-add window/IPC listeners.
+ */
 export function HomeScreen({
   onSelectSource,
   initialFocusSourceId = null,
 }: HomeScreenProps) {
-  const [sources, setSources] = useState<SourceListItem[]>([]);
-  const [focusIndex, setFocusIndex] = useState(0);
-  const [connection, setConnection] = useState<ConnectionInfo | null>(null);
+  perfInc("homeScreen.render");
+
+  const cached = getCachedLauncherBootstrap();
+  const [sources, setSources] = useState<SourceListItem[]>(
+    () => cached?.sources ?? [],
+  );
+  const [focusIndex, setFocusIndex] = useState(() =>
+    resolveInitialFocusIndex(
+      (cached?.sources ?? []).map((s) => s.id),
+      initialFocusSourceId,
+    ),
+  );
+  const [connection, setConnection] = useState<ConnectionInfo | null>(
+    () => cached?.connection ?? null,
+  );
   const [loadError, setLoadError] = useState<string | null>(null);
   const gridRef = useRef<HTMLElement | null>(null);
   const columnsRef = useRef(1);
+  const focusIndexRef = useRef(focusIndex);
+  const sourcesRef = useRef(sources);
+  const onSelectSourceRef = useRef(onSelectSource);
 
+  focusIndexRef.current = focusIndex;
+  sourcesRef.current = sources;
+  onSelectSourceRef.current = onSelectSource;
+
+  // Load once per mount; session cache avoids IPC on Home remount after source.
   useEffect(() => {
     let cancelled = false;
     void (async () => {
       try {
-        const [list, info] = await Promise.all([
-          window.coosy?.listSources() ?? Promise.resolve([]),
-          window.coosy?.getConnectionInfo() ?? Promise.resolve(null),
-        ]);
+        const { sources: list, connection: info, fromCache } =
+          await loadLauncherBootstrap();
         if (cancelled) return;
         setSources(list);
         setConnection(info);
+        if (!fromCache) {
+          perfInc("ipc.invoke", 2);
+        }
         setFocusIndex(
           resolveInitialFocusIndex(
             list.map((s) => s.id),
@@ -53,7 +94,9 @@ export function HomeScreen({
     return () => {
       cancelled = true;
     };
-  }, [initialFocusSourceId]);
+    // Mount-only bootstrap — preferred focus is applied from initial state / this load.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- mount-only bootstrap
+  }, []);
 
   useEffect(() => {
     setFocusIndex((current) => clampFocusIndex(current, sources.length));
@@ -64,9 +107,14 @@ export function HomeScreen({
     if (!grid) return;
 
     const measure = () => {
-      columnsRef.current = columnCountFromTemplate(
+      perfInc("resizeObserver.measure");
+      const next = columnCountFromTemplate(
         getComputedStyle(grid).gridTemplateColumns,
       );
+      if (next !== columnsRef.current) {
+        columnsRef.current = next;
+        perfInc("resizeObserver.columnsChanged");
+      }
     };
     measure();
 
@@ -75,58 +123,74 @@ export function HomeScreen({
     return () => observer.disconnect();
   }, [sources.length]);
 
-  const activateFocusedSource = useCallback(() => {
-    const source = sources[focusIndex];
-    if (source) onSelectSource(source.id);
-  }, [focusIndex, onSelectSource, sources]);
+  // Stable nav applicator — never depends on focusIndex/sources identity.
+  const applyNav = useCallback((action: NavAction) => {
+    const list = sourcesRef.current;
+    if (list.length === 0) return;
+    if (action === "select") {
+      const source = list[focusIndexRef.current];
+      if (source) onSelectSourceRef.current(source.id);
+      return;
+    }
+    if (action === "home" || action === "back") return;
 
-  const applyNav = useCallback(
-    (action: NavAction) => {
-      if (sources.length === 0) return;
-      if (action === "select") {
-        activateFocusedSource();
-        return;
-      }
-      if (action === "home" || action === "back") return;
-
-      setFocusIndex((current) =>
-        moveFocusIndex(current, action, sources.length, columnsRef.current),
+    perfInc("focus.nav");
+    setFocusIndex((current) => {
+      const next = moveFocusIndex(
+        current,
+        action,
+        list.length,
+        columnsRef.current,
       );
-    },
-    [activateFocusedSource, sources.length],
-  );
+      return next === current ? current : next;
+    });
+  }, []);
 
+  const handleSelect = useCallback((id: string) => {
+    onSelectSourceRef.current(id);
+  }, []);
+
+  const handleFocusRequest = useCallback((index: number) => {
+    setFocusIndex((current) => (current === index ? current : index));
+  }, []);
+
+  // Register key + remote listeners once; refs keep handlers current.
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
-      const map: Record<string, NavAction> = {
-        ArrowUp: "up",
-        ArrowDown: "down",
-        ArrowLeft: "left",
-        ArrowRight: "right",
-        Enter: "select",
-        " ": "select",
-      };
-      const action = map[event.key];
+      const action = KEY_TO_NAV[event.key];
       if (!action) return;
       // Prevent Space from scrolling the launcher when activating a tile.
       event.preventDefault();
+      perfInc("keydown.handler");
       applyNav(action);
     };
     window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
+    perfInc("listener.register");
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+      perfInc("listener.cleanup");
+    };
   }, [applyNav]);
 
   useEffect(() => {
     if (!window.coosy?.onNav) return;
-    return window.coosy.onNav((action) => applyNav(action));
+    perfInc("listener.register");
+    const unsubscribe = window.coosy.onNav((action) => applyNav(action));
+    return () => {
+      unsubscribe();
+      perfInc("listener.cleanup");
+    };
   }, [applyNav]);
 
+  // DOM focus only when index changes; skip if already focused (no layout thrash).
   useEffect(() => {
     const el = document.querySelector<HTMLElement>(
       `[data-source-index="${focusIndex}"]`,
     );
-    el?.focus();
-  }, [focusIndex, sources]);
+    if (!el || document.activeElement === el) return;
+    perfInc("focus.dom");
+    el.focus();
+  }, [focusIndex]);
 
   const endpoint =
     connection?.ip != null
@@ -159,8 +223,8 @@ export function HomeScreen({
             icon={source.icon}
             focused={index === focusIndex}
             index={index}
-            onSelect={() => onSelectSource(source.id)}
-            onFocusRequest={() => setFocusIndex(index)}
+            onSelect={handleSelect}
+            onFocusRequest={handleFocusRequest}
           />
         ))}
       </section>

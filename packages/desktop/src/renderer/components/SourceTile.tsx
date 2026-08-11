@@ -1,15 +1,22 @@
+import { memo } from "react";
+import { perfInc } from "../../shared/perf";
+
 interface SourceTileProps {
   id: string;
   displayName: string;
   icon: { src: string; alt?: string };
   focused?: boolean;
   index?: number;
-  onSelect: () => void;
-  onFocusRequest?: () => void;
+  onSelect: (id: string) => void;
+  onFocusRequest?: (index: number) => void;
 }
 
-/** Renders from MediaSource metadata only — no source-specific logic. */
-export function SourceTile({
+/**
+ * Renders from MediaSource metadata only — no source-specific logic.
+ * memo: focus changes only re-render the previously/newly focused tiles when
+ * parent keeps onSelect / onFocusRequest referentially stable.
+ */
+export const SourceTile = memo(function SourceTile({
   id,
   displayName,
   icon,
@@ -18,6 +25,7 @@ export function SourceTile({
   onSelect,
   onFocusRequest,
 }: SourceTileProps) {
+  perfInc("sourceTile.render");
   return (
     <button
       type="button"
@@ -27,10 +35,10 @@ export function SourceTile({
       tabIndex={focused ? 0 : -1}
       aria-label={icon.alt ?? displayName}
       aria-pressed={focused}
-      onClick={onSelect}
-      onFocus={onFocusRequest}
+      onClick={() => onSelect(id)}
+      onFocus={() => onFocusRequest?.(index)}
     >
       <span className="source-tile__label">{displayName}</span>
     </button>
   );
-}
+});

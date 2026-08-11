@@ -45,6 +45,14 @@ describe("launcher focus model", () => {
     expect(columnCountFromTemplate("1fr 1fr")).toBe(2);
     expect(columnCountFromTemplate("")).toBe(1);
   });
+
+  it("keeps moveFocusIndex pure and cheap for repeated keypress paths", () => {
+    let index = 0;
+    for (let i = 0; i < 100; i++) {
+      index = moveFocusIndex(index, "right", 4, 4);
+    }
+    expect(index).toBe(0);
+  });
 });
 
 describe("Enter / Space activation contract", () => {
