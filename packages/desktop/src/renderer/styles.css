@@ -50,7 +50,40 @@ button { font: inherit; }
 .source-tile__label { margin-top: auto; font-size: 1.06rem; font-weight: 750; }.source-tile__hint { color: var(--muted); font-size: .7rem; }
 .source-tile:focus, .source-tile:focus-visible, .source-tile--focused, .continue-card:focus-visible { outline: none; border-color: var(--accent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 65%, transparent); transform: translateY(-2px); }
 
-.home__error { color: #f87171; }.home__pairing { margin-top: 2rem; color: var(--muted); font-size: .75rem; }.home__pairing-label, .home__pairing-code, .home__pairing-endpoint, .home__pairing-hint { display: none; }
+.home__error { color: #f87171; }
+.home__pairing {
+  margin-top: 1.5rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.25rem 2rem;
+  align-items: flex-end;
+  color: var(--muted);
+  font-size: .8rem;
+}
+.home__pairing-label {
+  display: block;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  font-size: .65rem;
+  margin-bottom: .25rem;
+}
+.home__pairing-code {
+  display: block;
+  color: var(--fg);
+  font-size: 1.35rem;
+  letter-spacing: .2em;
+}
+.home__pairing-endpoint {
+  display: block;
+  color: var(--fg);
+  font-size: .9rem;
+}
+.home__pairing-hint {
+  display: block;
+  margin-top: .25rem;
+  font-size: .7rem;
+}
+.home__status-dot--err { background: #f87171; }
 .loading { display: grid; min-height: 100%; place-items: center; color: var(--muted); font-size: 1.5rem; }.player-surface { position: fixed; inset: 0; pointer-events: none; background: #000; }
 .remote-toast { position: fixed; z-index: 20; left: 50%; bottom: 2rem; transform: translateX(-50%); padding: .5rem 1rem; border-radius: 8px; font-size: 1rem; pointer-events: none; }.remote-toast--ok { background: var(--toast-ok); }.remote-toast--err { background: var(--toast-err); }
 

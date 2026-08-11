@@ -218,19 +218,30 @@ export function HomeScreen({
   }, [focusIndex]);
 
   const endpoint =
-    connection?.ip != null
-      ? `ws://${connection.ip}:${connection.port}`
+    connection?.httpUrl ??
+    (connection?.ip != null
+      ? `http://${connection.ip}:${connection.port}`
       : connection
-        ? `ws://<this-mac>:${connection.port}`
-        : null;
+        ? `http://<this-mac>:${connection.port}`
+        : null);
 
   return (
     <main className="home">
       <header className="home__header">
         <h1 className="home__brand">Co<span>OSy</span></h1>
         <div className="home__status" aria-label="Remote is ready to connect">
-          <span className="home__status-dot" />
-          {connection ? "Phone ready" : "Connecting phone"}
+          <span
+            className={
+              connection?.remoteError
+                ? "home__status-dot home__status-dot--err"
+                : "home__status-dot"
+            }
+          />
+          {connection?.remoteError
+            ? "Remote offline"
+            : connection
+              ? "Phone ready"
+              : "Connecting phone"}
         </div>
         <span className="home__settings" aria-hidden="true">⚙</span>
       </header>
@@ -267,6 +278,9 @@ export function HomeScreen({
 
       {connection ? (
         <footer className="home__pairing" aria-label="Phone pairing">
+          {connection.remoteError ? (
+            <p className="home__error">Remote: {connection.remoteError}</p>
+          ) : null}
           <div>
             <span className="home__pairing-label">Pairing code</span>
             <strong className="home__pairing-code">
@@ -274,10 +288,10 @@ export function HomeScreen({
             </strong>
           </div>
           <div>
-            <span className="home__pairing-label">Connect</span>
+            <span className="home__pairing-label">Phone URL</span>
             <code className="home__pairing-endpoint">{endpoint}</code>
             <span className="home__pairing-hint">
-              mDNS: {connection.mdnsName} · enter code once in remote hello
+              Same Wi-Fi · mDNS: {connection.mdnsName} · enter code once on phone
             </span>
           </div>
         </footer>

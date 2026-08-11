@@ -11,12 +11,17 @@ export interface ConnectionInfo {
   port: number;
   pairingCode: string;
   mdnsName: string;
+  /** http://ip:port for the phone browser, when LAN IP is known. */
+  httpUrl: string | null;
+  /** Set when the remote server failed to start; desktop still runs. */
+  remoteError: string | null;
 }
 
 export function registerIpcHandlers(opts: {
   getWindow: () => BrowserWindow | null;
   getSourceHost: () => SourceHost | null;
   getWsPort: () => number;
+  getRemoteError?: () => string | null;
 }): void {
   ipcMain.handle("sources:list", () =>
     listSources().map((s) => ({
@@ -47,12 +52,18 @@ export function registerIpcHandlers(opts: {
     await host.showLauncher();
   });
 
-  ipcMain.handle("connection:info", (): ConnectionInfo => ({
-    ip: getLanIPv4(),
-    port: opts.getWsPort(),
-    pairingCode: getOrCreatePairingCode(),
-    mdnsName: "CoOSy",
-  }));
+  ipcMain.handle("connection:info", (): ConnectionInfo => {
+    const ip = getLanIPv4();
+    const port = opts.getWsPort();
+    return {
+      ip,
+      port,
+      pairingCode: getOrCreatePairingCode(),
+      mdnsName: "CoOSy",
+      httpUrl: ip ? `http://${ip}:${port}` : null,
+      remoteError: opts.getRemoteError?.() ?? null,
+    };
+  });
 }
 
 export function sendToastToRenderer(

@@ -13,6 +13,8 @@ export interface ConnectionInfo {
   port: number;
   pairingCode: string;
   mdnsName: string;
+  httpUrl: string | null;
+  remoteError: string | null;
 }
 
 /**
