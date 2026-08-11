@@ -31,6 +31,7 @@ export class SourceHost {
   private readonly views = new Map<string, WebContentsView>();
   private readonly attached = new Set<string>();
   private readonly inputHooks = new Map<string, (event: Electron.Event, input: Electron.Input) => void>();
+  private readonly pausingSourceIds = new Set<string>();
   private activeSourceId: string | null = null;
   private resizeHandler: (() => void) | null = null;
   private boundInputSourceId: string | null = null;
@@ -119,7 +120,7 @@ export class SourceHost {
     }
 
     if (this.activeSourceId && this.activeSourceId !== sourceId) {
-      await pauseSourcePlayback(SOURCES[this.activeSourceId]);
+      this.pauseSourcePlayback(this.activeSourceId);
       this.detachView(this.activeSourceId);
     }
 
@@ -166,7 +167,7 @@ export class SourceHost {
       return;
     }
 
-    await pauseSourcePlayback(SOURCES[this.activeSourceId]);
+    this.pauseSourcePlayback(this.activeSourceId);
     this.detachView(this.activeSourceId);
     // Keep view alive for resume — do not destroy (architecture §7 / PRD §6.1)
     this.activeSourceId = null;
@@ -244,6 +245,15 @@ export class SourceHost {
           return { ok: false, reason: "no-active-session" };
         }
       },
+    });
+  }
+
+  /** Start the idempotent pause before detaching without delaying the next paint. */
+  private pauseSourcePlayback(sourceId: string): void {
+    if (this.pausingSourceIds.has(sourceId)) return;
+    this.pausingSourceIds.add(sourceId);
+    void pauseSourcePlayback(SOURCES[sourceId]).finally(() => {
+      this.pausingSourceIds.delete(sourceId);
     });
   }
 
