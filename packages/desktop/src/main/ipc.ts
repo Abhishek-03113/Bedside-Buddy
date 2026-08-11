@@ -1,6 +1,7 @@
 import { ipcMain, type BrowserWindow } from "electron";
 import type { SourceHost } from "./source-host.js";
 import { listSources } from "./sources/registry.js";
+import { getRecentPlayback } from "./db/db.js";
 import { getLanIPv4 } from "./lan.js";
 import { getOrCreatePairingCode } from "./pairing.js";
 import type { ToastOverlay } from "./toast-overlay.js";
@@ -30,6 +31,14 @@ export function registerIpcHandlers(opts: {
     const host = opts.getSourceHost();
     if (!host) throw new Error("SourceHost not ready");
     await host.showSource(sourceId);
+  });
+
+  ipcMain.handle("playback-history:list", () => getRecentPlayback(4));
+
+  ipcMain.handle("playback-history:resume", async (_event, item: { sourceId: string; contentUrl: string }) => {
+    const host = opts.getSourceHost();
+    if (!host) throw new Error("SourceHost not ready");
+    await host.resumePlayback(item.sourceId, item.contentUrl);
   });
 
   ipcMain.handle("launcher:show", async () => {

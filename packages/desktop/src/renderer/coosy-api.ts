@@ -1,4 +1,6 @@
-import type { NavAction, SourceCapabilities } from "@coosy/shared";
+import type { NavAction, PlaybackHistoryItem, SourceCapabilities } from "@coosy/shared";
+
+export type { PlaybackHistoryItem } from "@coosy/shared";
 
 export interface SourceListItem {
   id: string;
@@ -17,6 +19,8 @@ export interface ConnectionInfo {
 export interface CoosyRendererApi {
   listSources: () => Promise<SourceListItem[]>;
   openSource: (sourceId: string) => Promise<void>;
+  listPlaybackHistory: () => Promise<PlaybackHistoryItem[]>;
+  resumePlaybackHistory: (item: { sourceId: string; contentUrl: string }) => Promise<void>;
   showLauncher: () => Promise<void>;
   getConnectionInfo: () => Promise<ConnectionInfo>;
   onToast: (

@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer } from "electron";
-import type { NavAction, SourceCapabilities } from "@coosy/shared";
+import type { NavAction, PlaybackHistoryItem, SourceCapabilities } from "@coosy/shared";
 
 export interface SourceListItem {
   id: string;
@@ -25,6 +25,12 @@ const api = {
 
   openSource: (sourceId: string): Promise<void> =>
     ipcRenderer.invoke("sources:open", sourceId),
+
+  listPlaybackHistory: (): Promise<PlaybackHistoryItem[]> =>
+    ipcRenderer.invoke("playback-history:list"),
+
+  resumePlaybackHistory: (item: { sourceId: string; contentUrl: string }): Promise<void> =>
+    ipcRenderer.invoke("playback-history:resume", item),
 
   showLauncher: (): Promise<void> => ipcRenderer.invoke("launcher:show"),
 
