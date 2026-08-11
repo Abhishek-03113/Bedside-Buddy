@@ -1,8 +1,8 @@
-import type { CoosyApi } from "../preload/index";
+import type { CoosyRendererApi } from "./coosy-api";
 
 declare global {
   interface Window {
-    coosy?: CoosyApi;
+    coosy?: CoosyRendererApi;
   }
 }
 

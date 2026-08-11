@@ -6,7 +6,7 @@ interface PlayerOverlayProps {
 }
 
 /**
- * Chromeless overlay while a source WebContentsView is visible.
+ * Bottom chrome while a source WebContentsView fills the rest of the window.
  * Toasts confirm remote command results (honest feedback).
  */
 export function PlayerOverlay({ sourceId, onHome }: PlayerOverlayProps) {
@@ -30,17 +30,21 @@ export function PlayerOverlay({ sourceId, onHome }: PlayerOverlayProps) {
 
   return (
     <div className="player-overlay" data-source={sourceId}>
-      <button type="button" className="player-overlay__home" onClick={onHome}>
-        Home
-      </button>
-      {toast ? (
-        <div
-          className={`remote-toast ${toast.ok ? "remote-toast--ok" : "remote-toast--err"}`}
-          role="status"
-        >
-          {toast.message}
-        </div>
-      ) : null}
+      <div className="player-chrome">
+        <button type="button" className="player-chrome__home" onClick={onHome}>
+          Home
+        </button>
+        {toast ? (
+          <div
+            className={`remote-toast ${toast.ok ? "remote-toast--ok" : "remote-toast--err"}`}
+            role="status"
+          >
+            {toast.message}
+          </div>
+        ) : (
+          <span className="player-chrome__hint">Remote connected · {sourceId}</span>
+        )}
+      </div>
     </div>
   );
 }

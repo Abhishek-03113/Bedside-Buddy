@@ -59,9 +59,52 @@ body,
   cursor: pointer;
 }
 
-.source-tile:focus-visible {
+.source-tile:focus-visible,
+.source-tile--focused {
   outline: none;
   border-color: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 45%, transparent);
+}
+
+.home__error {
+  color: #f87171;
+}
+
+.home__pairing {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2rem;
+  margin-top: 3rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid #222;
+  color: var(--muted);
+  font-size: 0.95rem;
+}
+
+.home__pairing-label {
+  display: block;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 0.75rem;
+  margin-bottom: 0.35rem;
+}
+
+.home__pairing-code {
+  font-size: 2rem;
+  letter-spacing: 0.35em;
+  color: var(--fg);
+}
+
+.home__pairing-endpoint {
+  display: block;
+  color: var(--fg);
+  font-size: 1rem;
+}
+
+.home__pairing-hint {
+  display: block;
+  margin-top: 0.35rem;
+  font-size: 0.85rem;
 }
 
 .loading {
@@ -75,31 +118,43 @@ body,
 .player-overlay {
   position: fixed;
   inset: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
   pointer-events: none;
+  background: transparent;
 }
 
-.player-overlay__home {
+.player-chrome {
   pointer-events: auto;
-  position: absolute;
-  top: 1rem;
-  left: 1rem;
-  opacity: 0;
-  transition: opacity 0.2s;
+  height: 72px;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0 1.25rem;
+  background: #111;
+  border-top: 1px solid #2a2a2a;
 }
 
-.player-overlay:hover .player-overlay__home,
-.player-overlay__home:focus-visible {
-  opacity: 1;
+.player-chrome__home {
+  border: 1px solid #444;
+  background: #1a1a1a;
+  color: var(--fg);
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.player-chrome__hint {
+  color: var(--muted);
+  font-size: 0.95rem;
 }
 
 .remote-toast {
-  position: absolute;
-  bottom: 2rem;
-  left: 50%;
-  transform: translateX(-50%);
-  padding: 0.75rem 1.25rem;
+  margin-left: auto;
+  padding: 0.5rem 1rem;
   border-radius: 8px;
-  font-size: 1.1rem;
+  font-size: 1rem;
 }
 
 .remote-toast--ok {
