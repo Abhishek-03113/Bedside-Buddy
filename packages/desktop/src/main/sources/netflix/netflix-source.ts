@@ -43,6 +43,10 @@ export class NetflixSource implements MediaSource {
     this.input = input;
   }
 
+  async pausePlayback(): Promise<CommandResult> {
+    return this.input?.pauseMedia() ?? { ok: false, reason: "no-active-session" };
+  }
+
   async handleCommand(command: RemoteCommand): Promise<CommandResult> {
     if (!this.input) {
       return { ok: false, reason: "no-active-session" };

@@ -47,6 +47,18 @@ export function shouldReuseSourceView(
   return false;
 }
 
+/** Best-effort pause used before the host detaches a retained source view. */
+export async function pauseSourcePlayback(
+  source: Pick<MediaSource, "pausePlayback"> | null | undefined,
+): Promise<void> {
+  if (!source) return;
+  try {
+    await source.pausePlayback();
+  } catch (err) {
+    console.error("[source-host] failed to pause source", err);
+  }
+}
+
 export type HostSurface = "launcher" | "source";
 
 /**
@@ -77,3 +89,4 @@ export function nextHostState(
     pauseSourceId,
   };
 }
+import type { MediaSource } from "@coosy/shared";

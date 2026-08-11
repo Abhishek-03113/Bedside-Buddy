@@ -1,5 +1,9 @@
-import { describe, expect, it } from "vitest";
-import { nextHostState, shouldReuseSourceView } from "./viewport.js";
+import { describe, expect, it, vi } from "vitest";
+import {
+  nextHostState,
+  pauseSourcePlayback,
+  shouldReuseSourceView,
+} from "./viewport.js";
 
 /**
  * Lifecycle contracts for SourceHost — pure helpers mirror host behavior.
@@ -32,5 +36,33 @@ describe("SourceHost lifecycle contracts", () => {
     );
     expect(switched.pauseSourceId).toBe("netflix");
     expect(switched.activeSourceId).toBe("youtube");
+  });
+
+  it("pauses the active source before returning to the launcher", () => {
+    const left = nextHostState(
+      { surface: "source", activeSourceId: "netflix" },
+      { type: "show-launcher" },
+    );
+    expect(left.pauseSourceId).toBe("netflix");
+    expect(left.activeSourceId).toBeNull();
+  });
+
+  it("retains a paused source view for a later reopen", () => {
+    const retained = ["netflix"];
+    const left = nextHostState(
+      { surface: "source", activeSourceId: "netflix" },
+      { type: "show-launcher" },
+    );
+    expect(left.pauseSourceId).toBe("netflix");
+    expect(shouldReuseSourceView(retained, "netflix")).toBe(true);
+  });
+
+  it("runs the active source pause once and tolerates unavailable sources", async () => {
+    const pausePlayback = vi.fn().mockResolvedValue({ ok: true });
+
+    await pauseSourcePlayback({ pausePlayback });
+    await pauseSourcePlayback(undefined);
+
+    expect(pausePlayback).toHaveBeenCalledTimes(1);
   });
 });

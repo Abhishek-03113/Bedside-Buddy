@@ -31,6 +31,8 @@ export interface NowPlayingInfo {
  */
 export interface SourceInput {
   sendKey(keyCode: string): Promise<CommandResult>;
+  /** Pause all media in the current source view without toggling playback. */
+  pauseMedia(): Promise<CommandResult>;
 }
 
 /**
@@ -46,6 +48,9 @@ export interface MediaSource {
   readonly capabilities: SourceCapabilities;
 
   handleCommand(command: RemoteCommand): Promise<CommandResult>;
+
+  /** Stop playback when CoOSy leaves this source while retaining its view/session. */
+  pausePlayback(): Promise<CommandResult>;
 
   /** Called when a view becomes available / is rebound after show */
   bindInput?(input: SourceInput): void;

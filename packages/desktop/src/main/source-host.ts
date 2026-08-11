@@ -6,6 +6,7 @@ import { touchSource, setAppState } from "./db/db.js";
 import {
   computeSourceViewportBounds,
   isBlankSourceUrl,
+  pauseSourcePlayback,
   rectsEqual,
   type Rect,
 } from "./viewport.js";
@@ -118,11 +119,7 @@ export class SourceHost {
     }
 
     if (this.activeSourceId && this.activeSourceId !== sourceId) {
-      const previous = SOURCES[this.activeSourceId];
-      if (previous) {
-        // Don't block the switch on pause round-trip.
-        void previous.handleCommand({ type: "pause" });
-      }
+      await pauseSourcePlayback(SOURCES[this.activeSourceId]);
       this.detachView(this.activeSourceId);
     }
 
@@ -169,10 +166,7 @@ export class SourceHost {
       return;
     }
 
-    const active = SOURCES[this.activeSourceId];
-    if (active) {
-      void active.handleCommand({ type: "pause" });
-    }
+    await pauseSourcePlayback(SOURCES[this.activeSourceId]);
     this.detachView(this.activeSourceId);
     // Keep view alive for resume — do not destroy (architecture §7 / PRD §6.1)
     this.activeSourceId = null;
@@ -230,6 +224,24 @@ export class SourceHost {
         } catch (err) {
           console.error("[source-host] sendKey failed", err);
           return { ok: false, reason: "unknown" };
+        }
+      },
+      pauseMedia: async (): Promise<CommandResult> => {
+        try {
+          if (this.boundInputSourceId !== source.id) {
+            return { ok: false, reason: "no-active-session" };
+          }
+          const contents = view.webContents;
+          if (contents.isDestroyed()) {
+            return { ok: false, reason: "no-active-session" };
+          }
+          await contents.executeJavaScript(
+            "document.querySelectorAll('video, audio').forEach((media) => media.pause())",
+          );
+          return { ok: true };
+        } catch (err) {
+          console.error("[source-host] pauseMedia failed", err);
+          return { ok: false, reason: "no-active-session" };
         }
       },
     });
