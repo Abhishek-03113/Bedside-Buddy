@@ -150,16 +150,9 @@ export function RemoteControls({
           <button
             type="button"
             className="remote__chip remote__chip--search"
-            disabled={busy || !mediaEnabled || !canSearch}
-            onClick={() => {
-              if (!canSearch) return;
-              setSearchOpen(true);
-            }}
-            title={
-              !mediaEnabled
-                ? "Open a source to search"
-                : "Search"
-            }
+            disabled={busy || !mediaEnabled}
+            onClick={() => setSearchOpen(true)}
+            title={!mediaEnabled ? "Open a source to search" : "Search"}
           >
             Search
           </button>
@@ -240,7 +233,6 @@ export function RemoteControls({
         </div>
       ) : null}
 
-      {/* Page/Scroll buttons removed: use two-finger trackpad for scrolling */}
 
       <div className="transport" aria-label="Playback">
         <button

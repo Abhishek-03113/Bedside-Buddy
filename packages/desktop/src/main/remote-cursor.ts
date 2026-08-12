@@ -1,4 +1,5 @@
 import { BrowserWindow } from "electron";
+import { join } from "node:path";
 
 export interface RemoteCursorState {
   x: number;
@@ -83,10 +84,10 @@ export class RemoteCursorOverlay {
       show: false,
       alwaysOnTop: true,
       webPreferences: {
-        // Allow IPC in this isolated overlay so we can send frequent cursor updates
-        // without executing JS every frame.
-        nodeIntegration: true,
-        contextIsolation: false,
+        preload: join(__dirname, "../preload/remote-cursor-preload.js"),
+        contextIsolation: true,
+        nodeIntegration: false,
+        sandbox: true,
       },
     });
 
@@ -139,7 +140,7 @@ export class RemoteCursorOverlay {
   }
 
   private cursorHtml(): string {
-    const html = `<!doctype html><html><head><meta charset="utf-8"><style>html,body{margin:0;width:100%;height:100%;background:transparent;overflow:hidden;}#coosy-virtual-pointer{position:absolute;width:18px;height:18px;border:2px solid white;border-radius:50%;box-sizing:border-box;pointer-events:none;z-index:2147483647;transform:translate(-50%, -50%);opacity:0.9;}</style></head><body><div id="coosy-virtual-pointer"></div><script>const {ipcRenderer} = require('electron');let pending=null;let frame=false;const dot=document.getElementById('coosy-virtual-pointer');function renderState(s){if(!dot) return;dot.style.left=(s.x)+'px';dot.style.top=(s.y)+'px';dot.style.display=s.visible?'block':'none';}ipcRenderer.on('coosy:remote-cursor',(_, state)=>{pending=state;if(frame) return;frame=true;requestAnimationFrame(()=>{frame=false;if(pending) renderState(pending);pending=null;});});renderState({x:0,y:0,visible:false});</script></body></html>`;
+    const html = `<!doctype html><html><head><meta charset="utf-8"><style>html,body{margin:0;width:100%;height:100%;background:transparent;overflow:hidden;}#coosy-virtual-pointer{position:absolute;width:18px;height:18px;border:2px solid white;border-radius:50%;box-sizing:border-box;pointer-events:none;z-index:2147483647;transform:translate(-50%, -50%);opacity:0.9;}</style></head><body><div id="coosy-virtual-pointer"></div><script>var pending=null;var frame=false;var dot=document.getElementById('coosy-virtual-pointer');function renderState(s){if(!dot) return;dot.style.left=(s.x)+'px';dot.style.top=(s.y)+'px';dot.style.display=s.visible?'block':'none';}var unsubscribe=window.coosyCursor.onUpdate(function(state){pending=state;if(frame) return;frame=true;requestAnimationFrame(function(){frame=false;if(pending) renderState(pending);pending=null;});});renderState({x:0,y:0,visible:false});window.addEventListener('unload',function(){unsubscribe();});</script></body></html>`;
     return `data:text/html;charset=utf-8,${encodeURIComponent(html)}`;
   }
 }
