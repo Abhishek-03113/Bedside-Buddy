@@ -21,6 +21,14 @@ import { getOrCreatePairingCode } from "./pairing.js";
 import { ToastOverlay } from "./toast-overlay.js";
 import { getLanIPv4 } from "./lan.js";
 
+// Global safety: log unhandled promise rejections and uncaught exceptions
+process.on("unhandledRejection", (reason) => {
+  console.error("UnhandledPromiseRejection:", reason);
+});
+process.on("uncaughtException", (err) => {
+  console.error("UncaughtException:", err);
+});
+
 let mainWindow: BrowserWindow | null = null;
 let sourceHost: SourceHost | null = null;
 let remoteServer: RemoteServer | null = null;

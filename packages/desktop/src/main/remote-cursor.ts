@@ -11,6 +11,7 @@ export class RemoteCursorOverlay {
   private window: BrowserWindow | null = null;
   private ready = false;
   private pendingState: RemoteCursorState | null = null;
+  private boundWindowListeners: Array<() => void> = [];
 
   constructor(parent: BrowserWindow) {
     this.parent = parent;
@@ -24,6 +25,8 @@ export class RemoteCursorOverlay {
     this.window = null;
     this.ready = false;
     this.pendingState = null;
+    for (const unbind of this.boundWindowListeners) unbind();
+    this.boundWindowListeners = [];
   }
 
   update(state: RemoteCursorState): void {
@@ -35,19 +38,18 @@ export class RemoteCursorOverlay {
       return;
     }
 
-    const script = `window.updatePointer(${Math.round(state.x)}, ${Math.round(
-      state.y,
-    )}, ${state.visible})`;
-    this.window.webContents.executeJavaScript(script).catch(() => {
-      // Ignore overlay update failures.
-    });
+    try {
+      this.window.webContents.send("coosy:remote-cursor", {
+        x: Math.round(state.x),
+        y: Math.round(state.y),
+        visible: !!state.visible,
+      });
+    } catch {
+      // ignore
+    }
 
-    if (state.visible && !this.window.isVisible()) {
-      this.window.showInactive();
-    }
-    if (!state.visible && this.window.isVisible()) {
-      this.window.hide();
-    }
+    if (state.visible && !this.window.isVisible()) this.window.showInactive();
+    if (!state.visible && this.window.isVisible()) this.window.hide();
   }
 
   hide(): void {
@@ -81,9 +83,10 @@ export class RemoteCursorOverlay {
       show: false,
       alwaysOnTop: true,
       webPreferences: {
-        contextIsolation: true,
-        nodeIntegration: false,
-        sandbox: true,
+        // Allow IPC in this isolated overlay so we can send frequent cursor updates
+        // without executing JS every frame.
+        nodeIntegration: true,
+        contextIsolation: false,
       },
     });
 
@@ -97,6 +100,31 @@ export class RemoteCursorOverlay {
         this.pendingState = null;
       }
     });
+
+    // Keep overlay in sync with the parent window.
+    const onParentMoveResize = () => this.positionWindow();
+    const onParentHide = () => this.hide();
+    const onParentClose = () => this.dispose();
+
+    this.parent.on("move", onParentMoveResize);
+    this.parent.on("resize", onParentMoveResize);
+    this.parent.on("maximize", onParentMoveResize);
+    this.parent.on("unmaximize", onParentMoveResize);
+    this.parent.on("enter-full-screen", onParentMoveResize);
+    this.parent.on("leave-full-screen", onParentMoveResize);
+    this.parent.on("minimize", onParentHide);
+    this.parent.on("restore", onParentMoveResize);
+    this.parent.on("closed", onParentClose);
+
+    this.boundWindowListeners.push(() => this.parent.removeListener("move", onParentMoveResize));
+    this.boundWindowListeners.push(() => this.parent.removeListener("resize", onParentMoveResize));
+    this.boundWindowListeners.push(() => this.parent.removeListener("maximize", onParentMoveResize));
+    this.boundWindowListeners.push(() => this.parent.removeListener("unmaximize", onParentMoveResize));
+    this.boundWindowListeners.push(() => this.parent.removeListener("enter-full-screen", onParentMoveResize));
+    this.boundWindowListeners.push(() => this.parent.removeListener("leave-full-screen", onParentMoveResize));
+    this.boundWindowListeners.push(() => this.parent.removeListener("minimize", onParentHide));
+    this.boundWindowListeners.push(() => this.parent.removeListener("restore", onParentMoveResize));
+    this.boundWindowListeners.push(() => this.parent.removeListener("closed", onParentClose));
   }
 
   private positionWindow(): void {
@@ -111,7 +139,7 @@ export class RemoteCursorOverlay {
   }
 
   private cursorHtml(): string {
-    const html = `<!doctype html><html><head><meta charset="utf-8"><style>html,body{margin:0;width:100%;height:100%;background:transparent;overflow:hidden;}#coosy-virtual-pointer{position:absolute;width:18px;height:18px;border:2px solid white;border-radius:50%;box-sizing:border-box;pointer-events:none;z-index:2147483647;transform:translate(-50%, -50%);opacity:0.9;}</style></head><body><div id="coosy-virtual-pointer"></div><script>window.updatePointer=(x,y,visible)=>{const dot=document.getElementById('coosy-virtual-pointer');if(!dot) return;dot.style.left=x+'px';dot.style.top=y+'px';dot.style.display=visible?'block':'none';};window.updatePointer(0,0,false);</script></body></html>`;
+    const html = `<!doctype html><html><head><meta charset="utf-8"><style>html,body{margin:0;width:100%;height:100%;background:transparent;overflow:hidden;}#coosy-virtual-pointer{position:absolute;width:18px;height:18px;border:2px solid white;border-radius:50%;box-sizing:border-box;pointer-events:none;z-index:2147483647;transform:translate(-50%, -50%);opacity:0.9;}</style></head><body><div id="coosy-virtual-pointer"></div><script>const {ipcRenderer} = require('electron');let pending=null;let frame=false;const dot=document.getElementById('coosy-virtual-pointer');function renderState(s){if(!dot) return;dot.style.left=(s.x)+'px';dot.style.top=(s.y)+'px';dot.style.display=s.visible?'block':'none';}ipcRenderer.on('coosy:remote-cursor',(_, state)=>{pending=state;if(frame) return;frame=true;requestAnimationFrame(()=>{frame=false;if(pending) renderState(pending);pending=null;});});renderState({x:0,y:0,visible:false});</script></body></html>`;
     return `data:text/html;charset=utf-8,${encodeURIComponent(html)}`;
   }
 }

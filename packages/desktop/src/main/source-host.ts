@@ -50,7 +50,7 @@ export class SourceHost {
     this.window.on("enter-full-screen", this.resizeHandler);
     this.window.on("leave-full-screen", this.resizeHandler);
     this.pointerController = new VirtualPointerController(this.window);
-    this.pointerController.setTarget(this.getPointerTarget());
+    this.syncPointerTarget();
     perfInc("listener.register");
   }
 
@@ -128,6 +128,8 @@ export class SourceHost {
       this.bindSourceInput(source, existing);
       this.bindEscapeHook(sourceId, existing);
       this.attachView(sourceId, existing);
+      // Ensure pointer target is synchronized after reattachment/recreation.
+      this.syncPointerTarget();
       this.syncBounds(existing);
       this.setLauncherThrottling(true);
       this.emitContext("player");
@@ -150,7 +152,7 @@ export class SourceHost {
     touchSource(sourceId);
     setAppState("last_active_source", sourceId);
     this.setLauncherThrottling(true);
-    this.pointerController.setTarget(this.getPointerTarget());
+    this.syncPointerTarget();
     this.emitContext("player");
     this.startLoadIfNeeded(view, source);
   }
@@ -200,8 +202,18 @@ export class SourceHost {
     this.lastSyncedBounds = null;
     setAppState("last_active_source", "");
     this.setLauncherThrottling(false);
-    this.pointerController.setTarget(this.getPointerTarget());
+    this.syncPointerTarget();
     this.emitContext("launcher");
+  }
+
+  /** Centralized pointer target synchronization. */
+  private syncPointerTarget(): void {
+    try {
+      const target = this.getPointerTarget();
+      this.pointerController.setTarget(target);
+    } catch (err) {
+      console.error('[source-host] syncPointerTarget failed', err);
+    }
   }
 
   private emitContext(mode: ContextMode): void {
@@ -226,6 +238,8 @@ export class SourceHost {
     this.bindSourcePage(source, view);
     this.views.set(source.id, view);
     this.bindPlaybackHook(source.id, source, view);
+    // A new/recreated view may be the pointer target — synchronize now.
+    this.syncPointerTarget();
     return view;
   }
 
@@ -424,21 +438,11 @@ export class SourceHost {
     perfInc("sourceHost.setBounds");
   }
 
-  private getPointerTarget(): VirtualPointerTarget {
+  private getPointerTarget(): VirtualPointerTarget | null {
     if (this.activeSourceId) {
       const view = this.getActiveView();
       if (!view || view.webContents.isDestroyed()) {
-        return {
-          id: "launcher",
-          window: this.window,
-          contents: this.window.webContents,
-          getSize: () => {
-            const size = this.window.getContentSize();
-            const width = size[0] ?? 0;
-            const height = size[1] ?? 0;
-            return { width, height };
-          },
-        };
+        return null;
       }
       return {
         id: this.activeSourceId,

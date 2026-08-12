@@ -172,7 +172,7 @@ export function TrackpadSurface({ client, status, onToast }: TrackpadSurfaceProp
         Trackpad
       </span>
       <span style={{ color: 'var(--fg)', fontSize: '0.85rem', opacity: 0.4, marginTop: '8px' }}>
-        Slide to move pointer &middot; Tap to click
+        1 finger: move  ·  2 fingers: scroll  ·  tap: select
       </span>
     </div>
   );

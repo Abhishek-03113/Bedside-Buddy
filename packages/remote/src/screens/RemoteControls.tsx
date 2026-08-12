@@ -29,7 +29,7 @@ export function RemoteControls({
   onToast,
 }: RemoteControlsProps) {
   const [busy, setBusy] = useState(false);
-  const [inputMode, setInputMode] = useState<"dpad" | "trackpad">("dpad");
+  const [inputMode, setInputMode] = useState<"dpad" | "trackpad">("trackpad");
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const searchInputRef = useRef<HTMLInputElement | null>(null);
@@ -37,7 +37,6 @@ export function RemoteControls({
 
   const seek = capabilities?.supportsSeek ?? true;
   const volume = capabilities?.supportsVolume ?? true;
-  const scroll = capabilities?.supportsScroll ?? true;
   const browse = capabilities?.supportsBrowseNavigate ?? true;
   const canSearch = capabilities?.supportsSearch ?? false;
   const mediaEnabled = mode === "player";
@@ -147,21 +146,24 @@ export function RemoteControls({
         >
           Home
         </button>
-        <button
-          type="button"
-          className="remote__chip remote__chip--search"
-          disabled={busy || !mediaEnabled}
-          onClick={() => setSearchOpen(true)}
-          title={
-            !mediaEnabled
-              ? "Open a source to search"
-              : canSearch
-                ? "Search"
-                : "May be unsupported on this source"
-          }
-        >
-          Search
-        </button>
+        {canSearch ? (
+          <button
+            type="button"
+            className="remote__chip remote__chip--search"
+            disabled={busy || !mediaEnabled || !canSearch}
+            onClick={() => {
+              if (!canSearch) return;
+              setSearchOpen(true);
+            }}
+            title={
+              !mediaEnabled
+                ? "Open a source to search"
+                : "Search"
+            }
+          >
+            Search
+          </button>
+        ) : null}
       </section>
 
       <div className="remote__input-toggle">
@@ -238,28 +240,7 @@ export function RemoteControls({
         </div>
       ) : null}
 
-      {mediaEnabled ? (
-        <div className="remote__scroll" role="group" aria-label="Scroll page">
-          <button
-            type="button"
-            disabled={busy || !scroll}
-            onClick={() =>
-              void pressCommand({ type: "scroll", direction: "up" })
-            }
-          >
-            Scroll ↑
-          </button>
-          <button
-            type="button"
-            disabled={busy || !scroll}
-            onClick={() =>
-              void pressCommand({ type: "scroll", direction: "down" })
-            }
-          >
-            Scroll ↓
-          </button>
-        </div>
-      ) : null}
+      {/* Page/Scroll buttons removed: use two-finger trackpad for scrolling */}
 
       <div className="transport" aria-label="Playback">
         <button

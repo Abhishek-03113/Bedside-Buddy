@@ -1,6 +1,6 @@
 import type { BrowserWindow, WebContents } from "electron";
 import type { CommandResult, InputCommand } from "@coosy/shared";
-import { applyInputCommand } from "./source-input.js";
+import { applyInputCommand, focusForInput, type CursorState } from "./source-input.js";
 import { RemoteCursorOverlay } from "./remote-cursor.js";
 
 export interface VirtualPointerTarget {
@@ -13,16 +13,14 @@ export interface VirtualPointerTarget {
   };
 }
 
-export interface VirtualPointerState {
+export interface PointerOverlayState {
   targetId: string | null;
-  x: number;
-  y: number;
   width: number;
   height: number;
   visible: boolean;
-  primed: boolean;
-  focused: boolean;
 }
+
+export interface VirtualPointerState extends CursorState, PointerOverlayState {}
 
 const POINTER_MOVE_SCALE = 1.5;
 
@@ -32,15 +30,17 @@ function clamp(value: number, min: number, max: number): number {
 
 export class VirtualPointerController {
   private target: VirtualPointerTarget | null = null;
-  private state: VirtualPointerState = {
-    targetId: null,
+  private state: CursorState = {
     x: 0,
     y: 0,
+    primed: false,
+    focused: false,
+  };
+  private overlayState: PointerOverlayState = {
+    targetId: null,
     width: 0,
     height: 0,
     visible: false,
-    primed: false,
-    focused: false,
   };
   private readonly cursorOverlay: RemoteCursorOverlay;
 
@@ -54,10 +54,18 @@ export class VirtualPointerController {
   }
 
   getState(): VirtualPointerState {
-    return { ...this.state };
+    return {
+      ...this.state,
+      ...this.overlayState,
+    };
   }
 
-  setTarget(target: VirtualPointerTarget): void {
+  setTarget(target: VirtualPointerTarget | null): void {
+    if (!target) {
+      this.clearTarget();
+      return;
+    }
+
     const isSameTarget =
       this.target?.id === target.id && this.target?.contents === target.contents;
     this.target = target;
@@ -71,63 +79,71 @@ export class VirtualPointerController {
 
   clearTarget(): void {
     this.target = null;
-    this.state = {
-      targetId: null,
-      x: 0,
-      y: 0,
-      width: 0,
-      height: 0,
-      visible: false,
-      primed: false,
-      focused: false,
-    };
+    this.state = { x: 0, y: 0, primed: false, focused: false };
+    this.overlayState = { targetId: null, width: 0, height: 0, visible: false };
     this.cursorOverlay.hide();
   }
 
   show(): void {
-    this.state.visible = true;
-    this.cursorOverlay.update(this.state);
+    this.overlayState.visible = true;
+    this.cursorOverlay.update({
+      x: this.state.x,
+      y: this.state.y,
+      visible: true,
+    });
   }
 
   hide(): void {
-    this.state.visible = false;
-    this.cursorOverlay.update(this.state);
+    this.overlayState.visible = false;
+    this.cursorOverlay.update({
+      x: this.state.x,
+      y: this.state.y,
+      visible: false,
+    });
   }
 
   reset(): void {
     if (!this.target) return;
     const { width, height } = this.target.getSize();
     this.state = {
-      targetId: this.target.id,
       x: Math.round(width / 2),
       y: Math.round(height / 2),
-      width,
-      height,
-      visible: true,
       primed: true,
       focused: false,
     };
-    this.cursorOverlay.update(this.state);
+    this.overlayState = {
+      targetId: this.target.id,
+      width,
+      height,
+      visible: true,
+    };
+    this.cursorOverlay.update({ x: this.state.x, y: this.state.y, visible: true });
   }
 
   refreshTarget(): void {
     if (!this.target) return;
     const { width, height } = this.target.getSize();
-    this.state.width = width;
-    this.state.height = height;
+    this.overlayState.width = width;
+    this.overlayState.height = height;
+    this.overlayState.targetId = this.target.id;
     this.state.x = clamp(this.state.x, 0, Math.max(0, width - 1));
     this.state.y = clamp(this.state.y, 0, Math.max(0, height - 1));
-    this.cursorOverlay.update(this.state);
+    this.cursorOverlay.update({ x: this.state.x, y: this.state.y, visible: this.overlayState.visible });
   }
 
   handleInput(command: InputCommand): CommandResult {
     if (!this.target) {
       return { ok: false, reason: "no-active-session" };
     }
+    if (command.type === "pointer-move" && !this.state.focused) {
+      const focusErr = focusForInput(this.target, this.state);
+      if (focusErr) return focusErr;
+    }
+
     const result = applyInputCommand(this.target, this.state, command, {
       pointerMoveScale: POINTER_MOVE_SCALE,
     });
-    this.cursorOverlay.update(this.state);
+    this.cursorOverlay.update({ x: this.state.x, y: this.state.y, visible: this.overlayState.visible });
     return result;
   }
 }

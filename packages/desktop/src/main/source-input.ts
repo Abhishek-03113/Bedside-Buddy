@@ -34,16 +34,12 @@ export interface ActivePointerTarget {
   };
 }
 
-export interface PointerCursorState {
+export interface CursorState {
   x: number;
   y: number;
   /** True after the pointer has been initialized for a target. */
   primed: boolean;
   focused: boolean;
-}
-
-export function createPointerCursorState(): PointerCursorState {
-  return { x: 0, y: 0, primed: false, focused: false };
 }
 
 function buttonToElectron(button: PointerButton | undefined): "left" | "right" | "middle" {
@@ -87,7 +83,7 @@ function clamp(n: number, min: number, max: number): number {
  * Ensure cursor starts near the center of the active view on first pointer use.
  */
 export function ensureCursorPrimed(
-  cursor: PointerCursorState,
+  cursor: CursorState,
   target: ActivePointerTarget,
 ): void {
   if (cursor.primed) return;
@@ -97,7 +93,7 @@ export function ensureCursorPrimed(
   cursor.primed = true;
 }
 
-function focusForInput(target: ActivePointerTarget, cursor: PointerCursorState): CommandResult | null {
+export function focusForInput(target: ActivePointerTarget, cursor: CursorState): CommandResult | null {
   const { window, contents } = target;
   if (contents.isDestroyed()) {
     return { ok: false, reason: "no-active-session" };
@@ -112,7 +108,7 @@ function focusForInput(target: ActivePointerTarget, cursor: PointerCursorState):
 }
 
 function applyMove(
-  cursor: PointerCursorState,
+  cursor: CursorState,
   target: ActivePointerTarget,
   dx: number,
   dy: number,
@@ -137,7 +133,7 @@ function applyMove(
  */
 export function applyInputCommand(
   target: ActivePointerTarget,
-  cursor: PointerCursorState,
+  cursor: CursorState,
   command: InputCommand,
   opts?: { pointerMoveScale?: number },
 ): CommandResult {
