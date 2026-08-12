@@ -12,7 +12,7 @@
  *   the user must focus a field (via trackpad) before typing.
  */
 
-import type { BrowserWindow, WebContentsView } from "electron";
+import type { BrowserWindow, WebContents } from "electron";
 import type {
   CommandResult,
   InputCommand,
@@ -27,18 +27,23 @@ export const POINTER_SCROLL_SCALE = 2.5;
 
 export interface ActivePointerTarget {
   window: BrowserWindow;
-  view: WebContentsView;
+  contents: WebContents;
+  getSize(): {
+    width: number;
+    height: number;
+  };
 }
 
 export interface PointerCursorState {
   x: number;
   y: number;
-  /** True after the first move/click in a pointer session. */
+  /** True after the pointer has been initialized for a target. */
   primed: boolean;
+  focused: boolean;
 }
 
 export function createPointerCursorState(): PointerCursorState {
-  return { x: 0, y: 0, primed: false };
+  return { x: 0, y: 0, primed: false, focused: false };
 }
 
 function buttonToElectron(button: PointerButton | undefined): "left" | "right" | "middle" {
@@ -70,12 +75,8 @@ function mapRemoteKey(key: RemoteKey): string {
   }
 }
 
-function viewSize(view: WebContentsView): { width: number; height: number } {
-  const bounds = view.getBounds();
-  return {
-    width: Math.max(1, bounds.width),
-    height: Math.max(1, bounds.height),
-  };
+function viewSize(target: ActivePointerTarget): { width: number; height: number } {
+  return target.getSize();
 }
 
 function clamp(n: number, min: number, max: number): number {
@@ -87,43 +88,45 @@ function clamp(n: number, min: number, max: number): number {
  */
 export function ensureCursorPrimed(
   cursor: PointerCursorState,
-  view: WebContentsView,
+  target: ActivePointerTarget,
 ): void {
   if (cursor.primed) return;
-  const { width, height } = viewSize(view);
+  const { width, height } = viewSize(target);
   cursor.x = Math.round(width / 2);
   cursor.y = Math.round(height / 2);
   cursor.primed = true;
 }
 
-function focusForInput(target: ActivePointerTarget): CommandResult | null {
-  const { window, view } = target;
-  const contents = view.webContents;
+function focusForInput(target: ActivePointerTarget, cursor: PointerCursorState): CommandResult | null {
+  const { window, contents } = target;
   if (contents.isDestroyed()) {
     return { ok: false, reason: "no-active-session" };
   }
+  if (cursor.focused) return null;
   if (!window.isFocused()) {
     window.focus();
   }
   contents.focus();
+  cursor.focused = true;
   return null;
 }
 
 function applyMove(
   cursor: PointerCursorState,
-  view: WebContentsView,
+  target: ActivePointerTarget,
   dx: number,
   dy: number,
+  pointerMoveScale: number,
 ): void {
-  ensureCursorPrimed(cursor, view);
-  const { width, height } = viewSize(view);
+  ensureCursorPrimed(cursor, target);
+  const { width, height } = viewSize(target);
   cursor.x = clamp(
-    cursor.x + dx * POINTER_MOVE_SCALE,
+    cursor.x + dx * pointerMoveScale,
     0,
     Math.max(0, width - 1),
   );
   cursor.y = clamp(
-    cursor.y + dy * POINTER_MOVE_SCALE,
+    cursor.y + dy * pointerMoveScale,
     0,
     Math.max(0, height - 1),
   );
@@ -136,18 +139,29 @@ export function applyInputCommand(
   target: ActivePointerTarget,
   cursor: PointerCursorState,
   command: InputCommand,
+  opts?: { pointerMoveScale?: number },
 ): CommandResult {
-  const focusErr = focusForInput(target);
-  if (focusErr) return focusErr;
+  const pointerMoveScale = opts?.pointerMoveScale ?? POINTER_MOVE_SCALE;
+  const commandRequiresFocus =
+    command.type === "pointer-down" ||
+    command.type === "pointer-up" ||
+    command.type === "pointer-click" ||
+    command.type === "key-down" ||
+    command.type === "key-up" ||
+    command.type === "text-input";
+  if (commandRequiresFocus) {
+    const focusErr = focusForInput(target, cursor);
+    if (focusErr) return focusErr;
+  }
 
-  const contents = target.view.webContents;
+  const contents = target.contents;
   const x = () => Math.round(cursor.x);
   const y = () => Math.round(cursor.y);
 
   try {
     switch (command.type) {
-      case "pointer-move": {
-        applyMove(cursor, target.view, command.dx, command.dy);
+          case "pointer-move": {
+        applyMove(cursor, target, command.dx, command.dy, pointerMoveScale);
         contents.sendInputEvent({
           type: "mouseMove",
           x: x(),
@@ -156,7 +170,7 @@ export function applyInputCommand(
         return { ok: true };
       }
       case "pointer-down": {
-        ensureCursorPrimed(cursor, target.view);
+        ensureCursorPrimed(cursor, target);
         contents.sendInputEvent({
           type: "mouseDown",
           x: x(),
@@ -167,7 +181,7 @@ export function applyInputCommand(
         return { ok: true };
       }
       case "pointer-up": {
-        ensureCursorPrimed(cursor, target.view);
+        ensureCursorPrimed(cursor, target);
         contents.sendInputEvent({
           type: "mouseUp",
           x: x(),
@@ -178,7 +192,7 @@ export function applyInputCommand(
         return { ok: true };
       }
       case "pointer-click": {
-        ensureCursorPrimed(cursor, target.view);
+        ensureCursorPrimed(cursor, target);
         const button = buttonToElectron(command.button);
         contents.sendInputEvent({
           type: "mouseDown",
@@ -197,7 +211,7 @@ export function applyInputCommand(
         return { ok: true };
       }
       case "pointer-scroll": {
-        ensureCursorPrimed(cursor, target.view);
+        ensureCursorPrimed(cursor, target);
         const dx = (command.dx ?? 0) * POINTER_SCROLL_SCALE;
         const dy = command.dy * POINTER_SCROLL_SCALE;
         contents.sendInputEvent({

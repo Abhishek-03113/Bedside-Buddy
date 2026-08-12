@@ -286,7 +286,7 @@ async function handleMessage(
     }
 
     const host = deps.getSourceHost();
-    if (!host?.getActiveSourceId()) {
+    if (!host) {
       send(socket, {
         kind: "command-result",
         requestId: message.requestId,
