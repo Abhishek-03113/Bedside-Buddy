@@ -31,19 +31,31 @@
 
 import { execFileSync } from "node:child_process";
 import { existsSync } from "node:fs";
-import { join } from "node:path";
+import { join, dirname } from "node:path";
+import { fileURLToPath } from "node:url";
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const repoRoot = join(__dirname, "..", "..", "..");
 
 /**
  * Resolve the best available Python executable on the current platform.
+ * Prefers .venv/bin/python if available.
  * Returns null if no usable Python is found.
  * @returns {string|null}
  */
 function resolvePython() {
   /** @type {string[]} */
-  const candidates =
+  const venvCandidates =
+    process.platform === "win32"
+      ? [join(repoRoot, ".venv", "Scripts", "python.exe")]
+      : [join(repoRoot, ".venv", "bin", "python")];
+
+  const systemCandidates =
     process.platform === "win32"
       ? ["py", "python", "python3"]
       : ["python3", "python"];
+
+  const candidates = [...venvCandidates, ...systemCandidates];
 
   for (const candidate of candidates) {
     try {

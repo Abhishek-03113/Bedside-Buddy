@@ -45,18 +45,27 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
+const repoRoot = join(__dirname, "..", "..", "..");
 
 /**
  * Resolve the best available Python 3 executable on the current platform.
- * @returns {string} The Python executable name.
+ * Prefers .venv/bin/python if available.
+ * @returns {string} The Python executable name or path.
  * @throws {Error} If no usable Python is found.
  */
 function resolvePython() {
   /** @type {string[]} */
-  const candidates =
+  const venvCandidates =
+    process.platform === "win32"
+      ? [join(repoRoot, ".venv", "Scripts", "python.exe")]
+      : [join(repoRoot, ".venv", "bin", "python")];
+
+  const systemCandidates =
     process.platform === "win32"
       ? ["py", "python", "python3"]
       : ["python3", "python"];
+
+  const candidates = [...venvCandidates, ...systemCandidates];
 
   for (const candidate of candidates) {
     try {
@@ -168,6 +177,23 @@ async function main() {
   }
 
   console.log("[vmp] VMP signing completed successfully");
+  
+  // On macOS, re-sign the app bundle with ad-hoc signature to fix ENOEXEC errors
+  if (process.platform === "darwin") {
+    console.log("[vmp] Re-signing Electron.app for macOS...");
+    const appPath = join(electronDist, "Electron.app");
+    try {
+      execFileSync("codesign", ["--force", "--deep", "--sign", "-", appPath], {
+        stdio: "pipe",
+      });
+      console.log("[vmp] macOS code signature applied successfully");
+    } catch (err) {
+      console.warn("[vmp] Warning: Could not re-sign Electron.app:", err.message);
+      console.warn("[vmp] You may need to run manually:");
+      console.warn(`[vmp]   codesign --force --deep --sign - "${appPath}"`);
+    }
+  }
+  
   console.log("[vmp] The local Electron runtime is now VMP-signed for development use.");
   console.log("[vmp] Re-run this script after every `pnpm install` that updates electron.");
 }
