@@ -45,6 +45,11 @@ export class SourceHost {
   private lastSyncedBounds: Rect | null = null;
   /** View-local pointer cursor for phone trackpad (not the OS cursor). */
   private pointerCursor: PointerCursorState = createPointerCursorState();
+  private inputFocusSession: { sourceId: string | null; focused: boolean; lastInteraction: number } = {
+    sourceId: null,
+    focused: false,
+    lastInteraction: 0,
+  };
 
   constructor(window: BrowserWindow, events: SourceHostEvents) {
     this.window = window;
@@ -76,11 +81,26 @@ export class SourceHost {
     this.boundInputSourceId = null;
     this.lastSyncedBounds = null;
     this.pointerCursor = createPointerCursorState();
+    this.inputFocusSession = { sourceId: null, focused: false, lastInteraction: Date.now() };
     this.setLauncherThrottling(false);
   }
 
   getActiveSourceId(): string | null {
     return this.activeSourceId;
+  }
+
+  getPointerCursorState(): { x: number; y: number; viewWidth: number; viewHeight: number } {
+    const view = this.getActiveView();
+    if (!view || view.webContents.isDestroyed()) {
+      return { x: 0, y: 0, viewWidth: 1, viewHeight: 1 };
+    }
+    const bounds = view.getBounds();
+    return {
+      x: Math.round(this.pointerCursor.x),
+      y: Math.round(this.pointerCursor.y),
+      viewWidth: Math.max(1, bounds.width),
+      viewHeight: Math.max(1, bounds.height),
+    };
   }
 
   /**
@@ -92,10 +112,16 @@ export class SourceHost {
     if (!this.activeSourceId || !view || view.webContents.isDestroyed()) {
       return { ok: false, reason: "no-active-session" };
     }
+    this.inputFocusSession = {
+      ...this.inputFocusSession,
+      sourceId: this.activeSourceId,
+      lastInteraction: Date.now(),
+    };
     return applyInputCommand(
       { window: this.window, view },
       this.pointerCursor,
       command,
+      this.inputFocusSession,
     );
   }
 
@@ -151,6 +177,7 @@ export class SourceHost {
       this.detachView(this.activeSourceId);
     }
 
+    this.inputFocusSession = { sourceId, focused: false, lastInteraction: Date.now() };
     const view = this.ensureLiveView(source);
     // Attach immediately — never wait for Netflix's full document load.
     // Cold loads paint inside the WebContentsView; warm loads are instant.
@@ -210,6 +237,7 @@ export class SourceHost {
     this.activeSourceId = null;
     this.lastSyncedBounds = null;
     this.pointerCursor = createPointerCursorState();
+    this.inputFocusSession = { sourceId: null, focused: false, lastInteraction: Date.now() };
     setAppState("last_active_source", "");
     this.setLauncherThrottling(false);
     this.emitContext("launcher");

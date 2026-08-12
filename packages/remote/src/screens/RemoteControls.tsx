@@ -247,7 +247,7 @@ export function RemoteControls({
               void pressCommand({ type: "scroll", direction: "up" })
             }
           >
-            Scroll ↑
+            Page ↑
           </button>
           <button
             type="button"
@@ -256,7 +256,7 @@ export function RemoteControls({
               void pressCommand({ type: "scroll", direction: "down" })
             }
           >
-            Scroll ↓
+            Page ↓
           </button>
         </div>
       ) : null}

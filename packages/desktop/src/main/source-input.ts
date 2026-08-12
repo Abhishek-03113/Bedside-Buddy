@@ -136,9 +136,16 @@ export function applyInputCommand(
   target: ActivePointerTarget,
   cursor: PointerCursorState,
   command: InputCommand,
+  focusSession?: { focused: boolean },
 ): CommandResult {
-  const focusErr = focusForInput(target);
-  if (focusErr) return focusErr;
+  const shouldFocus = command.type !== "pointer-move" || !focusSession?.focused;
+  if (shouldFocus) {
+    const focusErr = focusForInput(target);
+    if (focusErr) return focusErr;
+    if (focusSession) {
+      focusSession.focused = true;
+    }
+  }
 
   const contents = target.view.webContents;
   const x = () => Math.round(cursor.x);
@@ -204,7 +211,7 @@ export function applyInputCommand(
           type: "mouseWheel",
           x: x(),
           y: y(),
-          deltaX: Math.round(dx),
+          deltaX: Math.round(-dx), // match Electron/Chromium convention used for deltaY above
           deltaY: Math.round(-dy), // Electron: positive deltaY scrolls up
         });
         return { ok: true };

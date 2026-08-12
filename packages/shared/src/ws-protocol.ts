@@ -56,6 +56,13 @@ export type WsServerMessage =
       ok: boolean;
     }
   | {
+      kind: "cursor-position";
+      x: number;
+      y: number;
+      viewWidth: number;
+      viewHeight: number;
+    }
+  | {
       kind: "error";
       requestId?: string;
       message: string;

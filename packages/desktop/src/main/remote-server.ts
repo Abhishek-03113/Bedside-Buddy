@@ -301,6 +301,17 @@ async function handleMessage(
       requestId: message.requestId,
       result,
     });
+    if (result.ok && (parsed.type === "pointer-move" || parsed.type === "pointer-scroll")) {
+      const cursor = host.getPointerCursorState();
+      const payload = {
+        kind: "cursor-position" as const,
+        x: cursor.x,
+        y: cursor.y,
+        viewWidth: cursor.viewWidth,
+        viewHeight: cursor.viewHeight,
+      };
+      broadcast(payload);
+    }
     // Avoid toast spam for high-frequency pointer moves / scroll.
     if (
       parsed.type !== "pointer-move" &&

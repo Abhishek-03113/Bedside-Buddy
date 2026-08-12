@@ -16,6 +16,7 @@
     "clean": "pnpm -r run clean"
   },
   "devDependencies": {
+    "jsdom": "^30.0.1",
     "typescript": "^5.7.2"
   },
   "pnpm": {

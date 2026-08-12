@@ -18,6 +18,13 @@ type HelloHandler = (
 type ContextHandler = (
   ctx: Extract<WsServerMessage, { kind: "context" }>,
 ) => void;
+type CursorPositionHandler = (payload: {
+  kind: "cursor-position";
+  x: number;
+  y: number;
+  viewWidth: number;
+  viewHeight: number;
+}) => void;
 type StatusHandler = (status: ConnectionStatus) => void;
 type ErrorHandler = (message: string) => void;
 type ToastHandler = (payload: { message: string; ok: boolean }) => void;
@@ -42,6 +49,7 @@ export interface WsClient {
   setPairingCode(code: string | undefined): void;
   onHello(handler: HelloHandler): void;
   onContext(handler: ContextHandler): void;
+  onCursorPosition(handler: CursorPositionHandler): void;
   onStatus(handler: StatusHandler): void;
   onError(handler: ErrorHandler): void;
   onToast(handler: ToastHandler): void;
@@ -158,6 +166,7 @@ export function createWsClient(opts: CreateWsClientOptions | string): WsClient {
 
   let helloHandler: HelloHandler | null = null;
   let contextHandler: ContextHandler | null = null;
+  let cursorPositionHandler: CursorPositionHandler | null = null;
   let statusHandler: StatusHandler | null = null;
   let errorHandler: ErrorHandler | null = null;
   let toastHandler: ToastHandler | null = null;
@@ -208,6 +217,16 @@ export function createWsClient(opts: CreateWsClientOptions | string): WsClient {
       }
       if (message.kind === "context") {
         contextHandler?.(message);
+        return;
+      }
+      if (message.kind === "cursor-position") {
+        cursorPositionHandler?.({
+          kind: "cursor-position",
+          x: message.x,
+          y: message.y,
+          viewWidth: message.viewWidth,
+          viewHeight: message.viewHeight,
+        });
         return;
       }
       if (message.kind === "command-result") {
@@ -323,6 +342,9 @@ export function createWsClient(opts: CreateWsClientOptions | string): WsClient {
     },
     onContext(handler) {
       contextHandler = handler;
+    },
+    onCursorPosition(handler) {
+      cursorPositionHandler = handler;
     },
     onStatus(handler) {
       statusHandler = handler;
