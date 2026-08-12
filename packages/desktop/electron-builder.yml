@@ -1,21 +1,61 @@
 appId: com.coosy.app
 productName: CoOSy
+copyright: Copyright © 2026 CoOSy
+
+# Skip native module rebuilding when cross-compiling from macOS to Windows.
+# The Castlabs Electron runtime already includes prebuilt native deps.
+# If you need native module rebuilding, build on the target platform instead.
+npmRebuild: false
+
+# Point to locally installed Castlabs ECS Electron runtime.
+# electron-builder will use this instead of downloading from the internet.
+# The Castlabs Electron is installed via pnpm from a custom github URL.
+electronDist: node_modules/electron/dist
+
 directories:
   output: release
+
+# Application files to bundle into the package.
+# electron-builder automatically includes the Castlabs ECS Electron runtime.
 files:
   - out/**/*
   - package.json
   # Remote phone UI (HTTP static) — produced by scripts/copy-remote-ui.mjs
   - out/remote/**/*
+
+# afterPack runs after electron-builder unpacks the app but before creating the installer.
+# This is the correct point to run EVS VMP signing on the application directory.
+# The hook reads COOSY_REQUIRE_VMP_SIGNING to decide if missing credentials are fatal.
+afterPack: scripts/vmp-sign.mjs
+
 mac:
   category: public.app-category.entertainment
   target:
     - dmg
     - zip
+
 linux:
+  category: AudioVideo
   target:
     - AppImage
-  category: AudioVideo
+
 win:
   target:
-    - nsis
+    - target: nsis
+      arch:
+        - x64
+  # Windows Authenticode code signing.
+  # Set CSC_LINK / CSC_KEY_PASSWORD env vars to sign.
+  # Without them the installer is UNSIGNED (acceptable for local/dev testing).
+  # See docs/windows-release.md for details.
+
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  perMachine: false
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  # Ensure the installer can update over an existing installation.
+  allowElevation: true
+  # Include an uninstaller.
+  deleteAppDataOnUninstall: false

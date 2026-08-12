@@ -24,6 +24,8 @@ export function TrackpadSurface({ client, status, onToast }: TrackpadSurfaceProp
     startY: 0,
     lastX: 0,
     lastY: 0,
+    lastCenterX: 0,
+    lastCenterY: 0,
     startTime: 0,
     isTwoFinger: false,
   });
@@ -69,11 +71,20 @@ export function TrackpadSurface({ client, status, onToast }: TrackpadSurfaceProp
   const handleTouchStart = (e: React.TouchEvent) => {
     if (e.touches.length > 0) {
       const touch = e.touches[0]!;
+      let lastCenterX = touch.clientX;
+      let lastCenterY = touch.clientY;
+      if (e.touches.length >= 2) {
+        const touch2 = e.touches[1]!;
+        lastCenterX = (touch.clientX + touch2.clientX) / 2;
+        lastCenterY = (touch.clientY + touch2.clientY) / 2;
+      }
       touchState.current = {
         startX: touch.clientX,
         startY: touch.clientY,
         lastX: touch.clientX,
         lastY: touch.clientY,
+        lastCenterX,
+        lastCenterY,
         startTime: Date.now(),
         isTwoFinger: e.touches.length >= 2,
       };
@@ -82,23 +93,38 @@ export function TrackpadSurface({ client, status, onToast }: TrackpadSurfaceProp
 
   const handleTouchMove = (e: React.TouchEvent) => {
     if (e.touches.length === 0 || !coalescer.current) return;
-    
-    if (e.touches.length >= 2) {
+
+    const isTwoFinger = e.touches.length >= 2;
+    if (isTwoFinger && !touchState.current.isTwoFinger) {
       touchState.current.isTwoFinger = true;
+      const touch0 = e.touches[0]!;
+      const touch1 = e.touches[1]!;
+      touchState.current.lastCenterX = (touch0.clientX + touch1.clientX) / 2;
+      touchState.current.lastCenterY = (touch0.clientY + touch1.clientY) / 2;
+      return;
     }
-    
+
+    if (isTwoFinger) {
+      const touch0 = e.touches[0]!;
+      const touch1 = e.touches[1]!;
+      const centerX = (touch0.clientX + touch1.clientX) / 2;
+      const centerY = (touch0.clientY + touch1.clientY) / 2;
+      const dx = centerX - touchState.current.lastCenterX;
+      const dy = centerY - touchState.current.lastCenterY;
+      touchState.current.lastCenterX = centerX;
+      touchState.current.lastCenterY = centerY;
+      coalescer.current.scroll(dx, dy);
+      return;
+    }
+
     const touch = e.touches[0]!;
     const dx = touch.clientX - touchState.current.lastX;
     const dy = touch.clientY - touchState.current.lastY;
-    
+
     touchState.current.lastX = touch.clientX;
     touchState.current.lastY = touch.clientY;
-    
-    if (touchState.current.isTwoFinger) {
-      coalescer.current.scroll(dx, dy);
-    } else {
-      coalescer.current.move(dx, dy);
-    }
+
+    coalescer.current.move(dx, dy);
   };
 
   const handleTouchEnd = (e: React.TouchEvent) => {
@@ -146,7 +172,7 @@ export function TrackpadSurface({ client, status, onToast }: TrackpadSurfaceProp
         Trackpad
       </span>
       <span style={{ color: 'var(--fg)', fontSize: '0.85rem', opacity: 0.4, marginTop: '8px' }}>
-        Slide to move pointer &middot; Tap to click
+        1 finger: move  ·  2 fingers: scroll  ·  tap: select
       </span>
     </div>
   );

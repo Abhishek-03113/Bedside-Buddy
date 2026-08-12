@@ -11,11 +11,7 @@ import {
   type Rect,
 } from "./viewport.js";
 import { perfInc } from "../shared/perf.js";
-import {
-  applyInputCommand,
-  createPointerCursorState,
-  type PointerCursorState,
-} from "./source-input.js";
+import { VirtualPointerController, type VirtualPointerTarget } from "./virtual-pointer.js";
 
 export type ContextMode = "launcher" | "player";
 
@@ -43,8 +39,7 @@ export class SourceHost {
   private boundInputSourceId: string | null = null;
   /** Last bounds successfully applied to the active view — skip identical setBounds. */
   private lastSyncedBounds: Rect | null = null;
-  /** View-local pointer cursor for phone trackpad (not the OS cursor). */
-  private pointerCursor: PointerCursorState = createPointerCursorState();
+  private readonly pointerController: VirtualPointerController;
 
   constructor(window: BrowserWindow, events: SourceHostEvents) {
     this.window = window;
@@ -54,6 +49,8 @@ export class SourceHost {
     // macOS fullscreen transitions can change content size without a plain resize.
     this.window.on("enter-full-screen", this.resizeHandler);
     this.window.on("leave-full-screen", this.resizeHandler);
+    this.pointerController = new VirtualPointerController(this.window);
+    this.syncPointerTarget();
     perfInc("listener.register");
   }
 
@@ -75,7 +72,7 @@ export class SourceHost {
     this.activeSourceId = null;
     this.boundInputSourceId = null;
     this.lastSyncedBounds = null;
-    this.pointerCursor = createPointerCursorState();
+    this.pointerController.clearTarget();
     this.setLauncherThrottling(false);
   }
 
@@ -88,15 +85,7 @@ export class SourceHost {
    * Rejects cleanly when the launcher is showing (no active MediaSource).
    */
   handleInput(command: InputCommand): CommandResult {
-    const view = this.getActiveView();
-    if (!this.activeSourceId || !view || view.webContents.isDestroyed()) {
-      return { ok: false, reason: "no-active-session" };
-    }
-    return applyInputCommand(
-      { window: this.window, view },
-      this.pointerCursor,
-      command,
-    );
+    return this.pointerController.handleInput(command);
   }
 
   getActiveSource(): MediaSource | null {
@@ -139,6 +128,8 @@ export class SourceHost {
       this.bindSourceInput(source, existing);
       this.bindEscapeHook(sourceId, existing);
       this.attachView(sourceId, existing);
+      // Ensure pointer target is synchronized after reattachment/recreation.
+      this.syncPointerTarget();
       this.syncBounds(existing);
       this.setLauncherThrottling(true);
       this.emitContext("player");
@@ -158,10 +149,10 @@ export class SourceHost {
     this.bindEscapeHook(sourceId, view);
     this.attachView(sourceId, view);
     this.activeSourceId = sourceId;
-    this.pointerCursor = createPointerCursorState();
     touchSource(sourceId);
     setAppState("last_active_source", sourceId);
     this.setLauncherThrottling(true);
+    this.syncPointerTarget();
     this.emitContext("player");
     this.startLoadIfNeeded(view, source);
   }
@@ -209,10 +200,20 @@ export class SourceHost {
     // Keep view alive for resume — do not destroy (architecture §7 / PRD §6.1)
     this.activeSourceId = null;
     this.lastSyncedBounds = null;
-    this.pointerCursor = createPointerCursorState();
     setAppState("last_active_source", "");
     this.setLauncherThrottling(false);
+    this.syncPointerTarget();
     this.emitContext("launcher");
+  }
+
+  /** Centralized pointer target synchronization. */
+  private syncPointerTarget(): void {
+    try {
+      const target = this.getPointerTarget();
+      this.pointerController.setTarget(target);
+    } catch (err) {
+      console.error('[source-host] syncPointerTarget failed', err);
+    }
   }
 
   private emitContext(mode: ContextMode): void {
@@ -237,6 +238,8 @@ export class SourceHost {
     this.bindSourcePage(source, view);
     this.views.set(source.id, view);
     this.bindPlaybackHook(source.id, source, view);
+    // A new/recreated view may be the pointer target — synchronize now.
+    this.syncPointerTarget();
     return view;
   }
 
@@ -379,6 +382,15 @@ export class SourceHost {
     });
     // Opaque under-page color avoids flashes of the launcher through the source.
     view.setBackgroundColor("#000000");
+
+    // Diagnostic: log the user-agent for this source's WebContents.
+    // The UA determines whether Netflix/DRM license servers treat this client
+    // as a compatible browser.  This is a read-only diagnostic — no spoofing.
+    // Prefix [netflix] when the partition is the Netflix session so it is easy
+    // to grep in logs when diagnosing E100.
+    const prefix = source.sessionPartition === "persist:netflix" ? "[netflix]" : `[source:${source.id}]`;
+    console.log(`${prefix} user agent:`, view.webContents.getUserAgent());
+
     return view;
   }
 
@@ -418,6 +430,7 @@ export class SourceHost {
     const view = this.getActiveView();
     if (view && !view.webContents.isDestroyed()) {
       this.syncBounds(view);
+      this.pointerController.refreshTarget();
     }
   }
 
@@ -432,6 +445,38 @@ export class SourceHost {
     view.setBounds(next);
     this.lastSyncedBounds = next;
     perfInc("sourceHost.setBounds");
+  }
+
+  private getPointerTarget(): VirtualPointerTarget | null {
+    if (this.activeSourceId) {
+      const view = this.getActiveView();
+      if (!view || view.webContents.isDestroyed()) {
+        return null;
+      }
+      return {
+        id: this.activeSourceId,
+        window: this.window,
+        contents: view.webContents,
+        getSize: (): { width: number; height: number } => {
+          const bounds = view.getBounds();
+          return {
+            width: Math.max(1, bounds.width),
+            height: Math.max(1, bounds.height),
+          };
+        },
+      };
+    }
+    return {
+      id: "launcher",
+      window: this.window,
+      contents: this.window.webContents,
+      getSize: (): { width: number; height: number } => {
+        const size = this.window.getContentSize();
+        const width = typeof size[0] === "number" ? size[0] : 0;
+        const height = typeof size[1] === "number" ? size[1] : 0;
+        return { width, height };
+      },
+    };
   }
 
   private setLauncherThrottling(enabled: boolean): void {

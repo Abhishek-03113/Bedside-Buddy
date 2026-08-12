@@ -19,6 +19,7 @@ export default defineConfig({
       rollupOptions: {
         input: {
           index: resolve(__dirname, "src/preload/index.ts"),
+          "remote-cursor-preload": resolve(__dirname, "src/preload/remote-cursor-preload.ts"),
         },
       },
     },
