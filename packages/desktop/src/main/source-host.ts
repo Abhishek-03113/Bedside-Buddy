@@ -382,6 +382,15 @@ export class SourceHost {
     });
     // Opaque under-page color avoids flashes of the launcher through the source.
     view.setBackgroundColor("#000000");
+
+    // Diagnostic: log the user-agent for this source's WebContents.
+    // The UA determines whether Netflix/DRM license servers treat this client
+    // as a compatible browser.  This is a read-only diagnostic — no spoofing.
+    // Prefix [netflix] when the partition is the Netflix session so it is easy
+    // to grep in logs when diagnosing E100.
+    const prefix = source.sessionPartition === "persist:netflix" ? "[netflix]" : `[source:${source.id}]`;
+    console.log(`${prefix} user agent:`, view.webContents.getUserAgent());
+
     return view;
   }
 

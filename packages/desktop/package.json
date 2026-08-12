@@ -14,7 +14,10 @@
     "ws-smoke": "node ./scripts/ws-smoke.mjs",
     "assets:logos": "node ./scripts/fetch-source-logos.mjs",
     "copy-remote-ui": "node ./scripts/copy-remote-ui.mjs",
-    "test": "vitest run"
+    "test": "vitest run",
+    "drm:sign:electron": "node ./scripts/sign-electron-vmp.mjs",
+    "package:win:dir": "electron-builder --dir --win --x64",
+    "package:win": "electron-builder --win nsis --x64"
   },
   "dependencies": {
     "@coosy/shared": "workspace:*",
