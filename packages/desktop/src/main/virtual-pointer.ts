@@ -23,6 +23,7 @@ export interface PointerOverlayState {
 export interface VirtualPointerState extends CursorState, PointerOverlayState {}
 
 const POINTER_MOVE_SCALE = 1.5;
+const POINTER_IDLE_TIMEOUT_MS = 1500;
 
 function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
@@ -43,12 +44,17 @@ export class VirtualPointerController {
     visible: false,
   };
   private readonly cursorOverlay: RemoteCursorOverlay;
+  private hideTimer: NodeJS.Timeout | null = null;
 
   constructor(window: BrowserWindow) {
     this.cursorOverlay = new RemoteCursorOverlay(window);
   }
 
   dispose(): void {
+    if (this.hideTimer) {
+      clearTimeout(this.hideTimer);
+      this.hideTimer = null;
+    }
     this.cursorOverlay.dispose();
     this.target = null;
   }
@@ -74,10 +80,15 @@ export class VirtualPointerController {
     } else {
       this.refreshTarget();
     }
-    this.show();
+    // Don't show pointer on setTarget — wait for actual interaction
+    this.hidePointer();
   }
 
   clearTarget(): void {
+    if (this.hideTimer) {
+      clearTimeout(this.hideTimer);
+      this.hideTimer = null;
+    }
     this.target = null;
     this.state = { x: 0, y: 0, primed: false, focused: false };
     this.overlayState = { targetId: null, width: 0, height: 0, visible: false };
@@ -115,9 +126,9 @@ export class VirtualPointerController {
       targetId: this.target.id,
       width,
       height,
-      visible: true,
+      visible: false, // Start hidden — wait for interaction
     };
-    this.cursorOverlay.update({ x: this.state.x, y: this.state.y, visible: true });
+    this.cursorOverlay.update({ x: this.state.x, y: this.state.y, visible: false });
   }
 
   refreshTarget(): void {
@@ -135,6 +146,19 @@ export class VirtualPointerController {
     if (!this.target) {
       return { ok: false, reason: "no-active-session" };
     }
+
+    // Show pointer and reset idle timer for pointer interactions
+    const isPointerInteraction =
+      command.type === "pointer-move" ||
+      command.type === "pointer-down" ||
+      command.type === "pointer-up" ||
+      command.type === "pointer-click" ||
+      command.type === "pointer-scroll";
+
+    if (isPointerInteraction) {
+      this.showPointer();
+    }
+
     if (command.type === "pointer-move" && !this.state.focused) {
       const focusErr = focusForInput(this.target, this.state);
       if (focusErr) return focusErr;
@@ -145,5 +169,44 @@ export class VirtualPointerController {
     });
     this.cursorOverlay.update({ x: this.state.x, y: this.state.y, visible: this.overlayState.visible });
     return result;
+  }
+
+  private showPointer(): void {
+    if (!this.overlayState.visible) {
+      this.overlayState.visible = true;
+      this.cursorOverlay.update({
+        x: this.state.x,
+        y: this.state.y,
+        visible: true,
+      });
+    }
+    this.resetHideTimer();
+  }
+
+  private resetHideTimer(): void {
+    if (this.hideTimer) {
+      clearTimeout(this.hideTimer);
+    }
+
+    this.hideTimer = setTimeout(() => {
+      this.hidePointer();
+      this.hideTimer = null;
+    }, POINTER_IDLE_TIMEOUT_MS);
+  }
+
+  private hidePointer(): void {
+    if (this.hideTimer) {
+      clearTimeout(this.hideTimer);
+      this.hideTimer = null;
+    }
+
+    if (this.overlayState.visible) {
+      this.overlayState.visible = false;
+      this.cursorOverlay.update({
+        x: this.state.x,
+        y: this.state.y,
+        visible: false,
+      });
+    }
   }
 }
